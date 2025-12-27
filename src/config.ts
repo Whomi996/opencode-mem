@@ -16,6 +16,7 @@ interface SupermemoryConfig {
   maxProfileItems?: number;
   injectProfile?: boolean;
   containerTagPrefix?: string;
+  filterPrompt?: string;
 }
 
 const DEFAULTS: Required<Omit<SupermemoryConfig, "apiKey">> = {
@@ -25,6 +26,7 @@ const DEFAULTS: Required<Omit<SupermemoryConfig, "apiKey">> = {
   maxProfileItems: 5,
   injectProfile: true,
   containerTagPrefix: "opencode",
+  filterPrompt: "You are a stateful coding agent. Remember all the information, including but not limited to user's coding preferences, tech stack, behaviours, workflows, and any other relevant details.",
 };
 
 function loadConfig(): SupermemoryConfig {
@@ -56,6 +58,7 @@ export const CONFIG = {
   maxProfileItems: fileConfig.maxProfileItems ?? DEFAULTS.maxProfileItems,
   injectProfile: fileConfig.injectProfile ?? DEFAULTS.injectProfile,
   containerTagPrefix: fileConfig.containerTagPrefix ?? DEFAULTS.containerTagPrefix,
+  filterPrompt: fileConfig.filterPrompt ?? DEFAULTS.filterPrompt,
 };
 
 export function isConfigured(): boolean {

@@ -16,7 +16,20 @@ Interactive wizard that:
 Then set your API key:
 
 ```bash
+# Add to your shell profile (.zshrc, .bashrc, etc.)
+echo 'export SUPERMEMORY_API_KEY="your-api-key"' >> ~/.zshrc
+source ~/.zshrc
+
+# Or set temporarily for current session
 export SUPERMEMORY_API_KEY="your-api-key"  # from console.supermemory.ai
+```
+
+Make sure `~/.config/opencode/opencode.json` contains the plugin:
+
+```json
+{
+  "plugin": ["opencode-supermemory"]
+}
 ```
 
 ## Features
@@ -121,7 +134,10 @@ Create `~/.config/opencode/supermemory.jsonc`:
   "injectProfile": true,
   
   // Prefix for container tags
-  "containerTagPrefix": "opencode"
+  "containerTagPrefix": "opencode",
+  
+  // LLM filter prompt for memory relevance
+  "filterPrompt": "You are a stateful coding agent. Remember all the information, including but not limited to user's coding preferences, tech stack, behaviours, workflows, and any other relevant details."
 }
 ```
 

@@ -31,7 +31,7 @@ export class SupermemoryClient {
       this.client = new Supermemory({ apiKey: SUPERMEMORY_API_KEY });
       this.client.settings.update({
 	     	shouldLLMFilter: true,
-	      filterPrompt: "You are a stateful coding agent. Remember all the information, including but not limited to user's coding preferences, tech stack, behaviours, workflows, and any other relevant details."
+	      filterPrompt: CONFIG.filterPrompt
       })
     }
     return this.client;
