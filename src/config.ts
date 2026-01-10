@@ -36,6 +36,7 @@ interface OpenCodeMemConfig {
   autoCaptureMinTokens?: number;
   autoCaptureMaxMemories?: number;
   autoCaptureSummaryMaxLength?: number;
+  autoCaptureContextWindow?: number;
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
@@ -76,6 +77,7 @@ const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingA
   autoCaptureMinTokens: 5000,
   autoCaptureMaxMemories: 10,
   autoCaptureSummaryMaxLength: 0,
+  autoCaptureContextWindow: 3,
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -151,6 +153,7 @@ const CONFIG_TEMPLATE = `{
   "autoCaptureTokenThreshold": 10000,
   "autoCaptureMinTokens": 5000,
   "autoCaptureMaxMemories": 10,
+  "autoCaptureContextWindow": 3,
   
   // Summary length: 0 = AI decides optimal length, >0 = character limit
   "autoCaptureSummaryMaxLength": 0,
@@ -208,6 +211,7 @@ export const CONFIG = {
   autoCaptureMinTokens: fileConfig.autoCaptureMinTokens ?? DEFAULTS.autoCaptureMinTokens,
   autoCaptureMaxMemories: fileConfig.autoCaptureMaxMemories ?? DEFAULTS.autoCaptureMaxMemories,
   autoCaptureSummaryMaxLength: fileConfig.autoCaptureSummaryMaxLength ?? DEFAULTS.autoCaptureSummaryMaxLength,
+  autoCaptureContextWindow: fileConfig.autoCaptureContextWindow ?? DEFAULTS.autoCaptureContextWindow,
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
   memoryApiKey: fileConfig.memoryApiKey,
