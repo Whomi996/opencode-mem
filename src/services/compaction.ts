@@ -483,6 +483,7 @@ export function createCompactionHook(
   }
 
   return {
+    compactionTracker: state.lastCompactionTime,
     async event({ event }: { event: { type: string; properties?: unknown } }) {
       const props = event.properties as Record<string, unknown> | undefined;
 

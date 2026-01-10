@@ -585,9 +585,24 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       const event = input.event;
 
       if (event.type === "session.idle" && event.properties?.sessionID) {
-        const shouldCapture = autoCaptureService.onSessionIdle(event.properties.sessionID);
+        const sessionID = event.properties.sessionID;
+        const shouldCapture = autoCaptureService.onSessionIdle(sessionID);
+        
         if (shouldCapture) {
-          performAutoCapture(ctx, autoCaptureService, event.properties.sessionID, directory).catch(
+          const lastCompaction = compactionHook?.compactionTracker?.get(sessionID) || 0;
+          const timeSinceCompaction = Date.now() - lastCompaction;
+          const skipThreshold = CONFIG.autoCaptureSkipAfterCompaction * 60 * 1000;
+          
+          if (timeSinceCompaction < skipThreshold) {
+            log("Auto-capture: skipped (recent compaction)", {
+              sessionID,
+              minutesSince: Math.floor(timeSinceCompaction / 60000),
+            });
+            autoCaptureService.clearBuffer(sessionID);
+            return;
+          }
+          
+          performAutoCapture(ctx, autoCaptureService, sessionID, directory).catch(
             (err) => log("Auto-capture failed", { error: String(err) })
           );
         }

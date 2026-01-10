@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { stripJsoncComments } from "./services/jsonc.js";
@@ -34,11 +34,11 @@ interface OpenCodeMemConfig {
   autoCaptureEnabled?: boolean;
   autoCaptureThreshold?: number;
   autoCaptureTimeThreshold?: number;
-  autoCaptureScope?: "user" | "project";
-  autoCaptureModel?: {
-    providerID?: string;
-    modelID?: string;
-  };
+  autoCaptureMaxMemories?: number;
+  autoCaptureSkipAfterCompaction?: number;
+  memoryModel?: string;
+  memoryApiUrl?: string;
+  memoryApiKey?: string;
 }
 
 const DEFAULT_KEYWORD_PATTERNS = [
@@ -60,7 +60,7 @@ const DEFAULT_KEYWORD_PATTERNS = [
   "always\\s+remember",
 ];
 
-const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "autoCaptureModel">> & { embeddingApiUrl?: string; embeddingApiKey?: string; autoCaptureModel?: { providerID?: string; modelID?: string } } = {
+const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey">> & { embeddingApiUrl?: string; embeddingApiKey?: string; memoryModel?: string; memoryApiUrl?: string; memoryApiKey?: string } = {
   storagePath: join(DATA_DIR, "data"),
   embeddingModel: "Xenova/all-MiniLM-L6-v2",
   similarityThreshold: 0.6,
@@ -74,7 +74,8 @@ const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingA
   autoCaptureEnabled: true,
   autoCaptureThreshold: 15,
   autoCaptureTimeThreshold: 0,
-  autoCaptureScope: "project",
+  autoCaptureMaxMemories: 10,
+  autoCaptureSkipAfterCompaction: 5,
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -102,6 +103,83 @@ function loadConfig(): OpenCodeMemConfig {
 
 const fileConfig = loadConfig();
 
+const CONFIG_TEMPLATE = `{
+  // ============================================
+  // OpenCode Memory Plugin Configuration
+  // ============================================
+  
+  // Storage location for vector database
+  "storagePath": "~/.opencode-mem/data",
+  
+  // ============================================
+  // Embedding Model (for similarity search)
+  // ============================================
+  
+  // Local model (default, no API key needed)
+  "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+  
+  // Optional: Use OpenAI-compatible API for embeddings
+  // "embeddingApiUrl": "https://api.openai.com/v1",
+  // "embeddingApiKey": "sk-...",
+  
+  // ============================================
+  // Memory/Summarization Model
+  // ============================================
+  
+  // Optional: Use external API for auto-capture summarization
+  // If not set, uses OpenCode's current session model (free!)
+  
+  // "memoryModel": "gpt-4o-mini",
+  // "memoryApiUrl": "https://api.openai.com/v1",
+  // "memoryApiKey": "sk-...",
+  
+  // Examples for other providers:
+  // Anthropic: "memoryApiUrl": "https://api.anthropic.com/v1"
+  // Groq: "memoryApiUrl": "https://api.groq.com/openai/v1"
+  // Ollama: "memoryApiUrl": "http://localhost:11434/v1", "memoryModel": "llama3"
+  
+  // ============================================
+  // Search Settings
+  // ============================================
+  
+  "similarityThreshold": 0.6,
+  "maxMemories": 5,
+  "maxProjectMemories": 10,
+  
+  // ============================================
+  // Auto-Capture Settings
+  // ============================================
+  
+  "autoCaptureEnabled": true,
+  "autoCaptureThreshold": 15,
+  "autoCaptureTimeThreshold": 0,
+  "autoCaptureMaxMemories": 10,
+  "autoCaptureSkipAfterCompaction": 5,
+  
+  // ============================================
+  // Advanced Settings
+  // ============================================
+  
+  "injectProfile": true,
+  "keywordPatterns": []
+}
+`;
+
+function ensureConfigExists(): void {
+  const configPath = join(CONFIG_DIR, "opencode-mem.jsonc");
+  
+  if (!existsSync(configPath)) {
+    try {
+      writeFileSync(configPath, CONFIG_TEMPLATE, "utf-8");
+      console.log(`\n✓ Created config template: ${configPath}`);
+      console.log("  Edit this file to customize opencode-mem settings.\n");
+    } catch {
+    }
+  }
+}
+
+ensureConfigExists();
+
 export const CONFIG = {
   storagePath: fileConfig.storagePath ?? DEFAULTS.storagePath,
   embeddingModel: fileConfig.embeddingModel ?? DEFAULTS.embeddingModel,
@@ -121,8 +199,11 @@ export const CONFIG = {
   autoCaptureEnabled: fileConfig.autoCaptureEnabled ?? DEFAULTS.autoCaptureEnabled,
   autoCaptureThreshold: fileConfig.autoCaptureThreshold ?? DEFAULTS.autoCaptureThreshold,
   autoCaptureTimeThreshold: fileConfig.autoCaptureTimeThreshold ?? DEFAULTS.autoCaptureTimeThreshold,
-  autoCaptureScope: fileConfig.autoCaptureScope ?? DEFAULTS.autoCaptureScope,
-  autoCaptureModel: fileConfig.autoCaptureModel,
+  autoCaptureMaxMemories: fileConfig.autoCaptureMaxMemories ?? DEFAULTS.autoCaptureMaxMemories,
+  autoCaptureSkipAfterCompaction: fileConfig.autoCaptureSkipAfterCompaction ?? DEFAULTS.autoCaptureSkipAfterCompaction,
+  memoryModel: fileConfig.memoryModel,
+  memoryApiUrl: fileConfig.memoryApiUrl,
+  memoryApiKey: fileConfig.memoryApiKey,
 };
 
 export function isConfigured(): boolean {
