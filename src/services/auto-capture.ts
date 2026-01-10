@@ -337,17 +337,23 @@ ${conversationBody}
     for (const memory of captureResponse.memories.slice(0, CONFIG.autoCaptureMaxMemories)) {
       if (!memory.summary || !memory.scope || !memory.type) continue;
 
-      const containerTag = memory.scope === "user" ? tags.user : tags.project;
+      const tagInfo = memory.scope === "user" ? tags.user : tags.project;
 
       const result = await memoryClient.addMemory(
         memory.summary,
-        containerTag,
+        tagInfo.tag,
         {
           type: memory.type,
           source: "auto-capture",
           sessionID,
           reasoning: memory.reasoning,
           captureTimestamp: Date.now(),
+          displayName: tagInfo.displayName,
+          userName: tagInfo.userName,
+          userEmail: tagInfo.userEmail,
+          projectPath: tagInfo.projectPath,
+          projectName: tagInfo.projectName,
+          gitRepoUrl: tagInfo.gitRepoUrl,
         }
       );
 

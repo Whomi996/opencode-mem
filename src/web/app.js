@@ -42,18 +42,19 @@ function populateTagDropdowns() {
   addTag.innerHTML = '<option value="">Select tag</option>';
   
   const allTags = [...state.tags.user, ...state.tags.project];
-  allTags.forEach(tag => {
-    const scope = tag.includes('_user_') ? 'user' : 'project';
-    const shortTag = tag.substring(0, 30) + (tag.length > 30 ? '...' : '');
+  allTags.forEach(tagInfo => {
+    const scope = tagInfo.tag.includes('_user_') ? 'user' : 'project';
+    const displayText = tagInfo.displayName || tagInfo.tag;
+    const shortDisplay = displayText.length > 50 ? displayText.substring(0, 50) + '...' : displayText;
     
     const option1 = document.createElement('option');
-    option1.value = tag;
-    option1.textContent = `[${scope}] ${shortTag}`;
+    option1.value = tagInfo.tag;
+    option1.textContent = `[${scope}] ${shortDisplay}`;
     tagFilter.appendChild(option1);
     
     const option2 = document.createElement('option');
-    option2.value = tag;
-    option2.textContent = `[${scope}] ${shortTag}`;
+    option2.value = tagInfo.tag;
+    option2.textContent = `[${scope}] ${shortDisplay}`;
     addTag.appendChild(option2);
   });
 }
@@ -106,6 +107,14 @@ function renderMemories() {
       ? `<span class="similarity-score">${memory.similarity}%</span>` 
       : '';
     
+    const displayInfo = memory.displayName || memory.id;
+    let subtitle = '';
+    if (memory.scope === 'user' && memory.userEmail) {
+      subtitle = `<span class="memory-subtitle">${escapeHtml(memory.userEmail)}</span>`;
+    } else if (memory.scope === 'project' && memory.projectPath) {
+      subtitle = `<span class="memory-subtitle">${escapeHtml(memory.projectPath)}</span>`;
+    }
+    
     return `
       <div class="memory-card ${isSelected ? 'selected' : ''}" data-id="${memory.id}">
         <div class="memory-header">
@@ -114,6 +123,8 @@ function renderMemories() {
             <span class="badge badge-${memory.scope}">${memory.scope}</span>
             ${memory.type ? `<span class="badge badge-type">${memory.type}</span>` : ''}
             ${similarityHtml}
+            <span class="memory-display-name">${escapeHtml(displayInfo)}</span>
+            ${subtitle}
           </div>
           <div class="memory-actions">
             <button class="btn-edit" onclick="editMemory('${memory.id}')">Edit</button>
@@ -356,16 +367,17 @@ function handleFilterChange() {
   
   if (scopeFilter) {
     const filteredTags = scopeFilter === 'user' ? state.tags.user : state.tags.project;
-    state.selectedTag = filteredTags.length > 0 ? filteredTags[0] : '';
+    state.selectedTag = filteredTags.length > 0 ? filteredTags[0].tag : '';
     
     const tagDropdown = document.getElementById('tag-filter');
     tagDropdown.innerHTML = '<option value="">All Tags</option>';
-    filteredTags.forEach(tag => {
-      const shortTag = tag.substring(0, 30) + (tag.length > 30 ? '...' : '');
+    filteredTags.forEach(tagInfo => {
+      const displayText = tagInfo.displayName || tagInfo.tag;
+      const shortDisplay = displayText.length > 50 ? displayText.substring(0, 50) + '...' : displayText;
       const option = document.createElement('option');
-      option.value = tag;
-      option.textContent = `[${scopeFilter}] ${shortTag}`;
-      if (tag === state.selectedTag) option.selected = true;
+      option.value = tagInfo.tag;
+      option.textContent = `[${scopeFilter}] ${shortDisplay}`;
+      if (tagInfo.tag === state.selectedTag) option.selected = true;
       tagDropdown.appendChild(option);
     });
   } else {
@@ -385,11 +397,12 @@ function handleAddScopeChange() {
   if (!scope) return;
   
   const tags = scope === 'user' ? state.tags.user : state.tags.project;
-  tags.forEach(tag => {
-    const shortTag = tag.substring(0, 30) + (tag.length > 30 ? '...' : '');
+  tags.forEach(tagInfo => {
+    const displayText = tagInfo.displayName || tagInfo.tag;
+    const shortDisplay = displayText.length > 50 ? displayText.substring(0, 50) + '...' : displayText;
     const option = document.createElement('option');
-    option.value = tag;
-    option.textContent = `[${scope}] ${shortTag}`;
+    option.value = tagInfo.tag;
+    option.textContent = `[${scope}] ${shortDisplay}`;
     tagDropdown.appendChild(option);
   });
 }

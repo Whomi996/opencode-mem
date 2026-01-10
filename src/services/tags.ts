@@ -6,6 +6,16 @@ function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex").slice(0, 16);
 }
 
+export interface TagInfo {
+  tag: string;
+  displayName: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
+}
+
 export function getGitEmail(): string | null {
   try {
     const email = execSync("git config user.email", { encoding: "utf-8" }).trim();
@@ -15,22 +25,74 @@ export function getGitEmail(): string | null {
   }
 }
 
-export function getUserTag(): string {
-  const email = getGitEmail();
-  if (email) {
-    return `${CONFIG.containerTagPrefix}_user_${sha256(email)}`;
+export function getGitName(): string | null {
+  try {
+    const name = execSync("git config user.name", { encoding: "utf-8" }).trim();
+    return name || null;
+  } catch {
+    return null;
   }
+}
+
+export function getGitRepoUrl(directory: string): string | null {
+  try {
+    const url = execSync("git config --get remote.origin.url", { 
+      encoding: "utf-8",
+      cwd: directory 
+    }).trim();
+    return url || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getProjectName(directory: string): string {
+  const parts = directory.split("/").filter(p => p);
+  return parts[parts.length - 1] || directory;
+}
+
+export function getUserTagInfo(): TagInfo {
+  const email = getGitEmail();
+  const name = getGitName();
+  
+  if (email) {
+    return {
+      tag: `${CONFIG.containerTagPrefix}_user_${sha256(email)}`,
+      displayName: name || email,
+      userName: name || undefined,
+      userEmail: email,
+    };
+  }
+  
   const fallback = process.env.USER || process.env.USERNAME || "anonymous";
-  return `${CONFIG.containerTagPrefix}_user_${sha256(fallback)}`;
-}
-
-export function getProjectTag(directory: string): string {
-  return `${CONFIG.containerTagPrefix}_project_${sha256(directory)}`;
-}
-
-export function getTags(directory: string): { user: string; project: string } {
   return {
-    user: getUserTag(),
-    project: getProjectTag(directory),
+    tag: `${CONFIG.containerTagPrefix}_user_${sha256(fallback)}`,
+    displayName: fallback,
+    userName: fallback,
+    userEmail: undefined,
   };
 }
+
+export function getProjectTagInfo(directory: string): TagInfo {
+  const projectName = getProjectName(directory);
+  const gitRepoUrl = getGitRepoUrl(directory);
+  
+  return {
+    tag: `${CONFIG.containerTagPrefix}_project_${sha256(directory)}`,
+    displayName: directory,
+    projectPath: directory,
+    projectName,
+    gitRepoUrl: gitRepoUrl || undefined,
+  };
+}
+
+export function getTags(directory: string): { 
+  user: TagInfo; 
+  project: TagInfo;
+} {
+  return {
+    user: getUserTagInfo(),
+    project: getProjectTagInfo(directory),
+  };
+}
+

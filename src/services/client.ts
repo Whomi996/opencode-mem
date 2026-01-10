@@ -21,6 +21,12 @@ interface MemoryRecord {
   createdAt: number;
   updatedAt: number;
   metadata?: string;
+  displayName?: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
 }
 
 interface SearchResult {
@@ -28,6 +34,12 @@ interface SearchResult {
   memory: string;
   similarity: number;
   metadata?: Record<string, unknown>;
+  displayName?: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
 }
 
 interface ProfileData {
@@ -152,6 +164,12 @@ export class LocalMemoryClient {
             new arrow.Field("createdAt", new arrow.Int64(), false),
             new arrow.Field("updatedAt", new arrow.Int64(), false),
             new arrow.Field("metadata", new arrow.Utf8(), true),
+            new arrow.Field("displayName", new arrow.Utf8(), true),
+            new arrow.Field("userName", new arrow.Utf8(), true),
+            new arrow.Field("userEmail", new arrow.Utf8(), true),
+            new arrow.Field("projectPath", new arrow.Utf8(), true),
+            new arrow.Field("projectName", new arrow.Utf8(), true),
+            new arrow.Field("gitRepoUrl", new arrow.Utf8(), true),
           ]);
           this.table = await this.db.createEmptyTable("memories", schema);
         }
@@ -211,6 +229,12 @@ export class LocalMemoryClient {
         memory: r.content,
         similarity: 1 - (r._distance || 0),
         metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+        displayName: r.displayName,
+        userName: r.userName,
+        userEmail: r.userEmail,
+        projectPath: r.projectPath,
+        projectName: r.projectName,
+        gitRepoUrl: r.gitRepoUrl,
       })).filter((r: SearchResult) => r.similarity >= CONFIG.similarityThreshold);
 
       log("searchMemories: success", { count: mapped.length });
@@ -262,7 +286,17 @@ export class LocalMemoryClient {
   async addMemory(
     content: string,
     containerTag: string,
-    metadata?: { type?: MemoryType; tool?: string; [key: string]: unknown }
+    metadata?: { 
+      type?: MemoryType; 
+      tool?: string; 
+      displayName?: string;
+      userName?: string;
+      userEmail?: string;
+      projectPath?: string;
+      projectName?: string;
+      gitRepoUrl?: string;
+      [key: string]: unknown;
+    }
   ) {
     log("addMemory: start", { containerTag, contentLength: content.length });
     try {
@@ -285,6 +319,12 @@ export class LocalMemoryClient {
         createdAt: now,
         updatedAt: now,
         metadata: metadata ? JSON.stringify(metadata) : undefined,
+        displayName: metadata?.displayName,
+        userName: metadata?.userName,
+        userEmail: metadata?.userEmail,
+        projectPath: metadata?.projectPath,
+        projectName: metadata?.projectName,
+        gitRepoUrl: metadata?.gitRepoUrl,
       };
 
       await this.table.add([record]);
@@ -325,12 +365,20 @@ export class LocalMemoryClient {
         .limit(limit)
         .toArray();
 
-      const memories = results.map((r: any) => ({
-        id: r.id,
-        summary: r.content,
-        createdAt: new Date(Number(r.createdAt)).toISOString(),
-        metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
-      }));
+      const memories = results
+        .sort((a: any, b: any) => Number(b.createdAt) - Number(a.createdAt))
+        .map((r: any) => ({
+          id: r.id,
+          summary: r.content,
+          createdAt: new Date(Number(r.createdAt)).toISOString(),
+          metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+          displayName: r.displayName,
+          userName: r.userName,
+          userEmail: r.userEmail,
+          projectPath: r.projectPath,
+          projectName: r.projectName,
+          gitRepoUrl: r.gitRepoUrl,
+        }));
 
       log("listMemories: success", { count: memories.length });
       return {

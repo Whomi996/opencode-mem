@@ -15,6 +15,22 @@ interface Memory {
   scope: string;
   createdAt: string;
   metadata?: Record<string, unknown>;
+  displayName?: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
+}
+
+interface TagInfo {
+  tag: string;
+  displayName?: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
 }
 
 interface PaginatedResponse<T> {
@@ -25,7 +41,7 @@ interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-export async function handleListTags(): Promise<ApiResponse<{ user: string[]; project: string[] }>> {
+export async function handleListTags(): Promise<ApiResponse<{ user: TagInfo[]; project: TagInfo[] }>> {
   try {
     await memoryClient.warmup();
     
@@ -34,23 +50,40 @@ export async function handleListTags(): Promise<ApiResponse<{ user: string[]; pr
       return { success: false, error: "Database not initialized" };
     }
 
-    const results = await table.query().select(["containerTag"]).toArray();
+    const results = await table.query().select([
+      "containerTag", 
+      "displayName", 
+      "userName", 
+      "userEmail", 
+      "projectPath", 
+      "projectName", 
+      "gitRepoUrl"
+    ]).toArray();
     
-    const tags = new Set<string>();
+    const tagsMap = new Map<string, TagInfo>();
+    
     for (const r of results) {
-      if (r.containerTag) {
-        tags.add(r.containerTag);
+      if (r.containerTag && !tagsMap.has(r.containerTag)) {
+        tagsMap.set(r.containerTag, {
+          tag: r.containerTag,
+          displayName: r.displayName,
+          userName: r.userName,
+          userEmail: r.userEmail,
+          projectPath: r.projectPath,
+          projectName: r.projectName,
+          gitRepoUrl: r.gitRepoUrl,
+        });
       }
     }
 
-    const userTags: string[] = [];
-    const projectTags: string[] = [];
+    const userTags: TagInfo[] = [];
+    const projectTags: TagInfo[] = [];
 
-    for (const tag of tags) {
-      if (tag.includes("_user_")) {
-        userTags.push(tag);
-      } else if (tag.includes("_project_")) {
-        projectTags.push(tag);
+    for (const tagInfo of tagsMap.values()) {
+      if (tagInfo.tag.includes("_user_")) {
+        userTags.push(tagInfo);
+      } else if (tagInfo.tag.includes("_project_")) {
+        projectTags.push(tagInfo);
       }
     }
 
@@ -85,11 +118,15 @@ export async function handleListMemories(
 
     const allResults = await query.toArray();
     
-    const total = allResults.length;
+    const sortedResults = allResults.sort((a: any, b: any) => 
+      Number(b.createdAt) - Number(a.createdAt)
+    );
+    
+    const total = sortedResults.length;
     const totalPages = Math.ceil(total / pageSize);
     const offset = (page - 1) * pageSize;
     
-    const paginatedResults = allResults.slice(offset, offset + pageSize);
+    const paginatedResults = sortedResults.slice(offset, offset + pageSize);
 
     const memories: Memory[] = paginatedResults.map((r: any) => ({
       id: r.id,
@@ -98,6 +135,12 @@ export async function handleListMemories(
       scope: r.containerTag?.includes("_user_") ? "user" : "project",
       createdAt: new Date(Number(r.createdAt)).toISOString(),
       metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+      displayName: r.displayName,
+      userName: r.userName,
+      userEmail: r.userEmail,
+      projectPath: r.projectPath,
+      projectName: r.projectName,
+      gitRepoUrl: r.gitRepoUrl,
     }));
 
     return {
@@ -120,6 +163,12 @@ export async function handleAddMemory(data: {
   content: string;
   containerTag: string;
   type?: MemoryType;
+  displayName?: string;
+  userName?: string;
+  userEmail?: string;
+  projectPath?: string;
+  projectName?: string;
+  gitRepoUrl?: string;
 }): Promise<ApiResponse<{ id: string }>> {
   try {
     if (!data.content || !data.containerTag) {
@@ -129,7 +178,15 @@ export async function handleAddMemory(data: {
     const result = await memoryClient.addMemory(
       data.content,
       data.containerTag,
-      { type: data.type }
+      { 
+        type: data.type,
+        displayName: data.displayName,
+        userName: data.userName,
+        userEmail: data.userEmail,
+        projectPath: data.projectPath,
+        projectName: data.projectName,
+        gitRepoUrl: data.gitRepoUrl,
+      }
     );
 
     if (!result.success) {
@@ -219,6 +276,12 @@ export async function handleUpdateMemory(
       createdAt: memory.createdAt,
       updatedAt: Date.now(),
       metadata: memory.metadata,
+      displayName: memory.displayName,
+      userName: memory.userName,
+      userEmail: memory.userEmail,
+      projectPath: memory.projectPath,
+      projectName: memory.projectName,
+      gitRepoUrl: memory.gitRepoUrl,
     };
 
     await table.add([updatedMemory]);
@@ -258,12 +321,16 @@ export async function handleSearch(
     }
 
     const allResults = await dbQuery.limit(1000).toArray();
+    
+    const sortedResults = allResults.sort((a: any, b: any) => 
+      Number(b.createdAt) - Number(a.createdAt)
+    );
 
-    const total = allResults.length;
+    const total = sortedResults.length;
     const totalPages = Math.ceil(total / pageSize);
     const offset = (page - 1) * pageSize;
     
-    const paginatedResults = allResults.slice(offset, offset + pageSize);
+    const paginatedResults = sortedResults.slice(offset, offset + pageSize);
 
     const memories = paginatedResults.map((r: any) => ({
       id: r.id,
@@ -273,6 +340,12 @@ export async function handleSearch(
       createdAt: new Date(Number(r.createdAt)).toISOString(),
       similarity: Math.round((1 - (r._distance || 0)) * 100),
       metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+      displayName: r.displayName,
+      userName: r.userName,
+      userEmail: r.userEmail,
+      projectPath: r.projectPath,
+      projectName: r.projectName,
+      gitRepoUrl: r.gitRepoUrl,
     }));
 
     return {

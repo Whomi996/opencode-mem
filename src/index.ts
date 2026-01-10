@@ -202,9 +202,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           }
 
           const [profileResult, userMemoriesResult, projectMemoriesListResult] = await Promise.all([
-            memoryClient.getProfile(tags.user, userMessage),
-            memoryClient.searchMemories(userMessage, tags.user),
-            memoryClient.listMemories(tags.project, CONFIG.maxProjectMemories),
+            memoryClient.getProfile(tags.user.tag, userMessage),
+            memoryClient.searchMemories(userMessage, tags.user.tag),
+            memoryClient.listMemories(tags.project.tag, CONFIG.maxProjectMemories),
           ]);
 
           const profile = profileResult.success ? profileResult : null;
@@ -373,13 +373,20 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 }
 
                 const scope = args.scope || "project";
-                const containerTag =
-                  scope === "user" ? tags.user : tags.project;
+                const tagInfo = scope === "user" ? tags.user : tags.project;
 
                 const result = await memoryClient.addMemory(
                   sanitizedContent,
-                  containerTag,
-                  { type: args.type }
+                  tagInfo.tag,
+                  { 
+                    type: args.type,
+                    displayName: tagInfo.displayName,
+                    userName: tagInfo.userName,
+                    userEmail: tagInfo.userEmail,
+                    projectPath: tagInfo.projectPath,
+                    projectName: tagInfo.projectName,
+                    gitRepoUrl: tagInfo.gitRepoUrl,
+                  }
                 );
 
                 if (!result.success) {
@@ -411,7 +418,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 if (scope === "user") {
                   const result = await memoryClient.searchMemories(
                     args.query,
-                    tags.user
+                    tags.user.tag
                   );
                   if (!result.success) {
                     return JSON.stringify({
@@ -425,7 +432,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 if (scope === "project") {
                   const result = await memoryClient.searchMemories(
                     args.query,
-                    tags.project
+                    tags.project.tag
                   );
                   if (!result.success) {
                     return JSON.stringify({
@@ -437,8 +444,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 }
 
                 const [userResult, projectResult] = await Promise.all([
-                  memoryClient.searchMemories(args.query, tags.user),
-                  memoryClient.searchMemories(args.query, tags.project),
+                  memoryClient.searchMemories(args.query, tags.user.tag),
+                  memoryClient.searchMemories(args.query, tags.project.tag),
                 ]);
 
                 if (!userResult.success || !projectResult.success) {
@@ -474,7 +481,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
               case "profile": {
                 const result = await memoryClient.getProfile(
-                  tags.user,
+                  tags.user.tag,
                   args.query
                 );
 
@@ -497,11 +504,10 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               case "list": {
                 const scope = args.scope || "project";
                 const limit = args.limit || 20;
-                const containerTag =
-                  scope === "user" ? tags.user : tags.project;
+                const tagInfo = scope === "user" ? tags.user : tags.project;
 
                 const result = await memoryClient.listMemories(
-                  containerTag,
+                  tagInfo.tag,
                   limit
                 );
 

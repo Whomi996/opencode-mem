@@ -279,9 +279,21 @@ margin-bottom: 10px;
 
 .memory-meta {
 display: flex;
-gap: 10px;
+gap: 8px;
 align-items: center;
 flex-wrap: wrap;
+}
+
+.memory-display-name {
+color: #00ff00;
+font-weight: bold;
+font-size: 13px;
+}
+
+.memory-subtitle {
+color: #888;
+font-size: 11px;
+margin-left: 5px;
 }
 
 .memory-checkbox {
