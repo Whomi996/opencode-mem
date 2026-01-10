@@ -202,7 +202,7 @@ export class LocalMemoryClient {
       const results = await this.table
         .query()
         .nearestTo(queryVector)
-        .where(`"containerTag" = '${containerTag}'`)
+        .where(`\`containerTag\` = '${containerTag}'`)
         .limit(CONFIG.maxMemories)
         .toArray();
 
@@ -229,7 +229,7 @@ export class LocalMemoryClient {
 
       const results = await this.table
         .query()
-        .where(`"containerTag" = '${containerTag}'`)
+        .where(`\`containerTag\` = '${containerTag}'`)
         .limit(CONFIG.maxProfileItems * 2)
         .toArray();
 
@@ -303,7 +303,7 @@ export class LocalMemoryClient {
     try {
       await this.initialize();
 
-      await this.table.delete(`"id" = '${memoryId}'`);
+      await this.table.delete(`\`id\` = '${memoryId}'`);
 
       log("deleteMemory: success", { memoryId });
       return { success: true };
@@ -321,14 +321,14 @@ export class LocalMemoryClient {
 
       const results = await this.table
         .query()
-        .where(`"containerTag" = '${containerTag}'`)
+        .where(`\`containerTag\` = '${containerTag}'`)
         .limit(limit)
         .toArray();
 
       const memories = results.map((r: any) => ({
         id: r.id,
         summary: r.content,
-        createdAt: new Date(r.createdAt).toISOString(),
+        createdAt: new Date(Number(r.createdAt)).toISOString(),
         metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
       }));
 
