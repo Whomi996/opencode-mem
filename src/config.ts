@@ -40,6 +40,9 @@ interface OpenCodeMemConfig {
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
+  webServerEnabled?: boolean;
+  webServerPort?: number;
+  webServerHost?: string;
 }
 
 const DEFAULT_KEYWORD_PATTERNS = [
@@ -78,6 +81,9 @@ const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingA
   autoCaptureMaxMemories: 10,
   autoCaptureSummaryMaxLength: 0,
   autoCaptureContextWindow: 3,
+  webServerEnabled: true,
+  webServerPort: 4747,
+  webServerHost: "127.0.0.1",
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -123,6 +129,14 @@ const CONFIG_TEMPLATE = `{
   // Optional: Use OpenAI-compatible API for embeddings
   // "embeddingApiUrl": "https://api.openai.com/v1",
   // "embeddingApiKey": "sk-...",
+  
+  // ============================================
+  // Web Server Settings
+  // ============================================
+  
+  "webServerEnabled": true,
+  "webServerPort": 4747,
+  "webServerHost": "127.0.0.1",
   
   // ============================================
   // Auto-Capture Settings (REQUIRES EXTERNAL API)
@@ -215,6 +229,9 @@ export const CONFIG = {
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
   memoryApiKey: fileConfig.memoryApiKey,
+  webServerEnabled: fileConfig.webServerEnabled ?? DEFAULTS.webServerEnabled,
+  webServerPort: fileConfig.webServerPort ?? DEFAULTS.webServerPort,
+  webServerHost: fileConfig.webServerHost ?? DEFAULTS.webServerHost,
 };
 
 export function isConfigured(): boolean {

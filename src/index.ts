@@ -7,6 +7,7 @@ import { formatContextForPrompt } from "./services/context.js";
 import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
 import { AutoCaptureService, performAutoCapture } from "./services/auto-capture.js";
+import { startWebServer, WebServer } from "./services/web-server.js";
 
 import { isConfigured, CONFIG } from "./config.js";
 import { log } from "./services/logger.js";
@@ -41,6 +42,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const tags = getTags(directory);
   const injectedSessions = new Set<string>();
   const autoCaptureService = new AutoCaptureService();
+  let webServer: WebServer | null = null;
   
   log("Plugin loaded", { 
     directory, 
@@ -52,6 +54,55 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   if (!isConfigured()) {
     log("Plugin disabled - memory system not configured");
   }
+
+  if (CONFIG.webServerEnabled) {
+    try {
+      webServer = await startWebServer({
+        port: CONFIG.webServerPort,
+        host: CONFIG.webServerHost,
+        enabled: CONFIG.webServerEnabled,
+      });
+      
+      const url = webServer.getUrl();
+      log("Web server started", { url });
+      
+      if (ctx.client?.tui) {
+        await ctx.client.tui.showToast({
+          body: {
+            title: "Memory Explorer",
+            message: `Web UI available at ${url}`,
+            variant: "success",
+            duration: 5000,
+          },
+        }).catch(() => {});
+      }
+    } catch (error) {
+      log("Web server failed to start", { error: String(error) });
+      
+      if (ctx.client?.tui) {
+        await ctx.client.tui.showToast({
+          body: {
+            title: "Memory Explorer Error",
+            message: `Failed to start web server: ${String(error)}`,
+            variant: "error",
+            duration: 5000,
+          },
+        }).catch(() => {});
+      }
+    }
+  }
+
+  process.on('SIGINT', async () => {
+    if (webServer) {
+      await webServer.stop();
+    }
+  });
+
+  process.on('SIGTERM', async () => {
+    if (webServer) {
+      await webServer.stop();
+    }
+  });
 
   return {
     "chat.message": async (input, output) => {

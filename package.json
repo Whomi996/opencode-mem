@@ -9,7 +9,7 @@
     "opencode-mem": "./dist/cli.js"
   },
   "scripts": {
-    "build": "bunx tsc && chmod +x dist/cli.js",
+    "build": "bunx tsc && chmod +x dist/cli.js && mkdir -p dist/web && cp -r src/web/* dist/web/",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
   },
