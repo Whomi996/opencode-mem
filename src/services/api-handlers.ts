@@ -44,6 +44,7 @@ interface PaginatedResponse<T> {
 export async function handleListTags(): Promise<ApiResponse<{ user: TagInfo[]; project: TagInfo[] }>> {
   try {
     await memoryClient.warmup();
+    await (memoryClient as any).refreshTable();
     
     const table = (memoryClient as any).table;
     if (!table) {
@@ -97,6 +98,36 @@ export async function handleListTags(): Promise<ApiResponse<{ user: TagInfo[]; p
   }
 }
 
+function safeToISOString(timestamp: any): string {
+  try {
+    if (timestamp === null || timestamp === undefined) {
+      return new Date().toISOString();
+    }
+    const numValue = typeof timestamp === 'bigint' 
+      ? Number(timestamp) 
+      : Number(timestamp);
+    
+    if (isNaN(numValue) || numValue < 0) {
+      return new Date().toISOString();
+    }
+    
+    return new Date(numValue).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
+function safeJSONParse(jsonString: any): any {
+  if (!jsonString || typeof jsonString !== 'string') {
+    return undefined;
+  }
+  try {
+    return JSON.parse(jsonString);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function handleListMemories(
   tag?: string,
   page: number = 1,
@@ -104,6 +135,7 @@ export async function handleListMemories(
 ): Promise<ApiResponse<PaginatedResponse<Memory>>> {
   try {
     await memoryClient.warmup();
+    await (memoryClient as any).refreshTable();
 
     const table = (memoryClient as any).table;
     if (!table) {
@@ -133,8 +165,8 @@ export async function handleListMemories(
       content: r.content,
       type: r.type,
       scope: r.containerTag?.includes("_user_") ? "user" : "project",
-      createdAt: new Date(Number(r.createdAt)).toISOString(),
-      metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+      createdAt: safeToISOString(r.createdAt),
+      metadata: safeJSONParse(r.metadata),
       displayName: r.displayName,
       userName: r.userName,
       userEmail: r.userEmail,
@@ -249,6 +281,9 @@ export async function handleUpdateMemory(
       return { success: false, error: "id is required" };
     }
 
+    await memoryClient.warmup();
+    await (memoryClient as any).refreshTable();
+
     const table = (memoryClient as any).table;
     if (!table) {
       return { success: false, error: "Database not initialized" };
@@ -285,6 +320,7 @@ export async function handleUpdateMemory(
     };
 
     await table.add([updatedMemory]);
+    await (memoryClient as any).refreshTable();
 
     return { success: true };
   } catch (error) {
@@ -305,6 +341,7 @@ export async function handleSearch(
     }
 
     await memoryClient.warmup();
+    await (memoryClient as any).refreshTable();
 
     const table = (memoryClient as any).table;
     if (!table) {
@@ -337,9 +374,9 @@ export async function handleSearch(
       content: r.content,
       type: r.type,
       scope: r.containerTag?.includes("_user_") ? "user" : "project",
-      createdAt: new Date(Number(r.createdAt)).toISOString(),
+      createdAt: safeToISOString(r.createdAt),
       similarity: Math.round((1 - (r._distance || 0)) * 100),
-      metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+      metadata: safeJSONParse(r.metadata),
       displayName: r.displayName,
       userName: r.userName,
       userEmail: r.userEmail,
@@ -371,6 +408,7 @@ export async function handleStats(): Promise<ApiResponse<{
 }>> {
   try {
     await memoryClient.warmup();
+    await (memoryClient as any).refreshTable();
 
     const table = (memoryClient as any).table;
     if (!table) {

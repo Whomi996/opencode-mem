@@ -6,6 +6,36 @@ import { CONFIG } from "../config.js";
 import { log } from "./logger.js";
 import type { MemoryType } from "../types/index.js";
 
+function safeToISOString(timestamp: any): string {
+  try {
+    if (timestamp === null || timestamp === undefined) {
+      return new Date().toISOString();
+    }
+    const numValue = typeof timestamp === 'bigint' 
+      ? Number(timestamp) 
+      : Number(timestamp);
+    
+    if (isNaN(numValue) || numValue < 0) {
+      return new Date().toISOString();
+    }
+    
+    return new Date(numValue).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
+function safeJSONParse(jsonString: any): any {
+  if (!jsonString || typeof jsonString !== 'string') {
+    return undefined;
+  }
+  try {
+    return JSON.parse(jsonString);
+  } catch {
+    return undefined;
+  }
+}
+
 env.allowLocalModels = true;
 env.allowRemoteModels = true;
 env.cacheDir = CONFIG.storagePath + "/.cache";
@@ -207,10 +237,25 @@ export class LocalMemoryClient {
     };
   }
 
+  async refreshTable(): Promise<void> {
+    if (!this.db) {
+      log("refreshTable: db not initialized");
+      return;
+    }
+    
+    try {
+      this.table = await this.db.openTable("memories");
+    } catch (error) {
+      log("refreshTable: error", { error: String(error) });
+      throw error;
+    }
+  }
+
   async searchMemories(query: string, containerTag: string) {
     log("searchMemories: start", { containerTag });
     try {
       await this.initialize();
+      await this.refreshTable();
 
       const queryVector = await withTimeout(
         this.embedder.embed(query),
@@ -228,7 +273,7 @@ export class LocalMemoryClient {
         id: r.id,
         memory: r.content,
         similarity: 1 - (r._distance || 0),
-        metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+        metadata: safeJSONParse(r.metadata),
         displayName: r.displayName,
         userName: r.userName,
         userEmail: r.userEmail,
@@ -250,6 +295,7 @@ export class LocalMemoryClient {
     log("getProfile: start", { containerTag });
     try {
       await this.initialize();
+      await this.refreshTable();
 
       const results = await this.table
         .query()
@@ -328,6 +374,7 @@ export class LocalMemoryClient {
       };
 
       await this.table.add([record]);
+      await this.refreshTable();
 
       log("addMemory: success", { id });
       return { success: true as const, id };
@@ -344,6 +391,7 @@ export class LocalMemoryClient {
       await this.initialize();
 
       await this.table.delete(`\`id\` = '${memoryId}'`);
+      await this.refreshTable();
 
       log("deleteMemory: success", { memoryId });
       return { success: true };
@@ -358,6 +406,7 @@ export class LocalMemoryClient {
     log("listMemories: start", { containerTag, limit });
     try {
       await this.initialize();
+      await this.refreshTable();
 
       const results = await this.table
         .query()
@@ -370,8 +419,8 @@ export class LocalMemoryClient {
         .map((r: any) => ({
           id: r.id,
           summary: r.content,
-          createdAt: new Date(Number(r.createdAt)).toISOString(),
-          metadata: r.metadata ? JSON.parse(r.metadata) : undefined,
+          createdAt: safeToISOString(r.createdAt),
+          metadata: safeJSONParse(r.metadata),
           displayName: r.displayName,
           userName: r.userName,
           userEmail: r.userEmail,
