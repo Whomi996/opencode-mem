@@ -613,12 +613,12 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     },
 
     event: async (input: { event: { type: string; properties?: any } }) => {
-      if (!autoCaptureService.isEnabled()) return;
-
       const event = input.event;
       const props = event.properties as Record<string, unknown> | undefined;
 
       if (event.type === "message.updated") {
+        if (!autoCaptureService.isEnabled()) return;
+
         const info = props?.info as any;
         if (!info) return;
 
@@ -643,6 +643,40 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
       if (event.type === "session.deleted" && props?.sessionID) {
         autoCaptureService.cleanup(props.sessionID as string);
+      }
+
+      if (event.type === "session.idle") {
+        if (!isConfigured()) return;
+
+        const { cleanupService } = await import("./services/cleanup-service.js");
+        
+        const shouldRun = await cleanupService.shouldRunCleanup();
+        if (!shouldRun) return;
+
+        cleanupService.runCleanup().then((result) => {
+          if (result.deletedCount > 0 && ctx.client?.tui) {
+            ctx.client.tui.showToast({
+              body: {
+                title: "Memory Cleanup",
+                message: `Deleted ${result.deletedCount} old memories (user: ${result.userCount}, project: ${result.projectCount})`,
+                variant: "info",
+                duration: 5000,
+              },
+            }).catch(() => {});
+          }
+        }).catch((err) => {
+          log("Auto-cleanup failed", { error: String(err) });
+          if (ctx.client?.tui) {
+            ctx.client.tui.showToast({
+              body: {
+                title: "Memory Cleanup Error",
+                message: String(err),
+                variant: "error",
+                duration: 5000,
+              },
+            }).catch(() => {});
+          }
+        });
       }
     },
   };

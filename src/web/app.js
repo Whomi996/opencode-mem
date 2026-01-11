@@ -103,6 +103,7 @@ function renderMemories() {
   
   container.innerHTML = state.memories.map(memory => {
     const isSelected = state.selectedMemories.has(memory.id);
+    const isPinned = memory.isPinned || false;
     const similarityHtml = memory.similarity !== undefined 
       ? `<span class="similarity-score">${memory.similarity}%</span>` 
       : '';
@@ -115,18 +116,24 @@ function renderMemories() {
       subtitle = `<span class="memory-subtitle">${escapeHtml(memory.projectPath)}</span>`;
     }
     
+    const pinButton = isPinned 
+      ? `<button class="btn-pin pinned" onclick="unpinMemory('${memory.id}')" title="Unpin">📌</button>`
+      : `<button class="btn-pin" onclick="pinMemory('${memory.id}')" title="Pin">📍</button>`;
+    
     return `
-      <div class="memory-card ${isSelected ? 'selected' : ''}" data-id="${memory.id}">
+      <div class="memory-card ${isSelected ? 'selected' : ''} ${isPinned ? 'pinned' : ''}" data-id="${memory.id}">
         <div class="memory-header">
           <div class="memory-meta">
             <input type="checkbox" class="memory-checkbox" data-id="${memory.id}" ${isSelected ? 'checked' : ''} />
             <span class="badge badge-${memory.scope}">${memory.scope}</span>
             ${memory.type ? `<span class="badge badge-type">${memory.type}</span>` : ''}
             ${similarityHtml}
+            ${isPinned ? '<span class="badge badge-pinned">PINNED</span>' : ''}
             <span class="memory-display-name">${escapeHtml(displayInfo)}</span>
             ${subtitle}
           </div>
           <div class="memory-actions">
+            ${pinButton}
             <button class="btn-edit" onclick="editMemory('${memory.id}')">Edit</button>
             <button class="btn-delete" onclick="deleteMemory('${memory.id}')">Delete</button>
           </div>
@@ -449,6 +456,64 @@ function formatDate(isoString) {
   });
 }
 
+async function pinMemory(id) {
+  const result = await fetchAPI(`/api/memories/${id}/pin`, { method: 'POST' });
+  
+  if (result.success) {
+    showToast('Memory pinned', 'success');
+    await loadMemories();
+  } else {
+    showToast(result.error || 'Failed to pin memory', 'error');
+  }
+}
+
+async function unpinMemory(id) {
+  const result = await fetchAPI(`/api/memories/${id}/unpin`, { method: 'POST' });
+  
+  if (result.success) {
+    showToast('Memory unpinned', 'success');
+    await loadMemories();
+  } else {
+    showToast(result.error || 'Failed to unpin memory', 'error');
+  }
+}
+
+async function runCleanup() {
+  if (!confirm('Run cleanup? This will delete old memories (respects pinned memories).')) return;
+  
+  showToast('Running cleanup...', 'info');
+  const result = await fetchAPI('/api/cleanup', { method: 'POST' });
+  
+  if (result.success) {
+    const data = result.data;
+    showToast(`Cleanup complete: ${data.deletedCount} deleted (user: ${data.userCount}, project: ${data.projectCount})`, 'success');
+    await loadMemories();
+    await loadStats();
+  } else {
+    showToast(result.error || 'Cleanup failed', 'error');
+  }
+}
+
+async function runDeduplication() {
+  if (!confirm('Run deduplication? This will find and remove duplicate memories.')) return;
+  
+  showToast('Running deduplication...', 'info');
+  const result = await fetchAPI('/api/deduplicate', { method: 'POST' });
+  
+  if (result.success) {
+    const data = result.data;
+    let message = `Deduplication complete: ${data.exactDuplicatesDeleted} exact duplicates deleted`;
+    if (data.nearDuplicateGroups.length > 0) {
+      message += `, ${data.nearDuplicateGroups.length} near-duplicate groups found`;
+    }
+    showToast(message, 'success');
+    await loadMemories();
+    await loadStats();
+  } else {
+    showToast(result.error || 'Deduplication failed', 'error');
+  }
+}
+
 function startAutoRefresh() {
   if (state.autoRefreshInterval) {
     clearInterval(state.autoRefreshInterval);
@@ -490,6 +555,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   document.getElementById('bulk-delete-btn').addEventListener('click', bulkDelete);
   document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
+  
+  document.getElementById('cleanup-btn').addEventListener('click', runCleanup);
+  document.getElementById('deduplicate-btn').addEventListener('click', runDeduplication);
   
   document.getElementById('edit-modal').addEventListener('click', (e) => {
     if (e.target.id === 'edit-modal') closeModal();

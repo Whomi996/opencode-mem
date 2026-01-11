@@ -10,6 +10,10 @@ import {
   handleUpdateMemory,
   handleSearch,
   handleStats,
+  handlePinMemory,
+  handleUnpinMemory,
+  handleRunCleanup,
+  handleRunDeduplication,
 } from "./api-handlers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -108,6 +112,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (path === "/api/stats" && method === "GET") {
       const result = await handleStats();
+      return jsonResponse(result);
+    }
+
+    if (path.match(/^\/api\/memories\/[^/]+\/pin$/) && method === "POST") {
+      const id = path.split("/")[3];
+      if (!id) {
+        return jsonResponse({ success: false, error: "Invalid ID" });
+      }
+      const result = await handlePinMemory(id);
+      return jsonResponse(result);
+    }
+
+    if (path.match(/^\/api\/memories\/[^/]+\/unpin$/) && method === "POST") {
+      const id = path.split("/")[3];
+      if (!id) {
+        return jsonResponse({ success: false, error: "Invalid ID" });
+      }
+      const result = await handleUnpinMemory(id);
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/cleanup" && method === "POST") {
+      const result = await handleRunCleanup();
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/deduplicate" && method === "POST") {
+      const result = await handleRunDeduplication();
       return jsonResponse(result);
     }
 

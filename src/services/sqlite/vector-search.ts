@@ -57,6 +57,7 @@ export class VectorSearch {
         m.project_path,
         m.project_name,
         m.git_repo_url,
+        m.is_pinned,
         v.distance
       FROM vec_memories v
       INNER JOIN memories m ON v.memory_id = m.id
@@ -80,6 +81,7 @@ export class VectorSearch {
       projectPath: row.project_path,
       projectName: row.project_name,
       gitRepoUrl: row.git_repo_url,
+      isPinned: row.is_pinned,
     }));
   }
 
@@ -162,6 +164,16 @@ export class VectorSearch {
       FROM memories
     `);
     return stmt.all() as any[];
+  }
+
+  pinMemory(db: Database, memoryId: string): void {
+    const stmt = db.prepare(`UPDATE memories SET is_pinned = 1 WHERE id = ?`);
+    stmt.run(memoryId);
+  }
+
+  unpinMemory(db: Database, memoryId: string): void {
+    const stmt = db.prepare(`UPDATE memories SET is_pinned = 0 WHERE id = ?`);
+    stmt.run(memoryId);
   }
 }
 

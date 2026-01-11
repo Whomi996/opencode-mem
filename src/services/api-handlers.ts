@@ -24,6 +24,7 @@ interface Memory {
   projectPath?: string;
   projectName?: string;
   gitRepoUrl?: string;
+  isPinned?: boolean;
 }
 
 interface TagInfo {
@@ -188,6 +189,7 @@ export async function handleListMemories(
       projectPath: r.project_path,
       projectName: r.project_name,
       gitRepoUrl: r.git_repo_url,
+      isPinned: r.is_pinned === 1,
     }));
 
     return {
@@ -460,6 +462,7 @@ export async function handleSearch(
       projectPath: r.projectPath,
       projectName: r.projectName,
       gitRepoUrl: r.gitRepoUrl,
+      isPinned: r.isPinned === 1,
     }));
 
     return {
@@ -521,6 +524,89 @@ export async function handleStats(): Promise<ApiResponse<{
     };
   } catch (error) {
     log("handleStats: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handlePinMemory(id: string): Promise<ApiResponse<void>> {
+  try {
+    if (!id) {
+      return { success: false, error: "id is required" };
+    }
+
+    const userShards = shardManager.getAllShards('user', '');
+    const projectShards = shardManager.getAllShards('project', '');
+    const allShards = [...userShards, ...projectShards];
+
+    for (const shard of allShards) {
+      const db = connectionManager.getConnection(shard.dbPath);
+      const memory = vectorSearch.getMemoryById(db, id);
+
+      if (memory) {
+        vectorSearch.pinMemory(db, id);
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: "Memory not found" };
+  } catch (error) {
+    log("handlePinMemory: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleUnpinMemory(id: string): Promise<ApiResponse<void>> {
+  try {
+    if (!id) {
+      return { success: false, error: "id is required" };
+    }
+
+    const userShards = shardManager.getAllShards('user', '');
+    const projectShards = shardManager.getAllShards('project', '');
+    const allShards = [...userShards, ...projectShards];
+
+    for (const shard of allShards) {
+      const db = connectionManager.getConnection(shard.dbPath);
+      const memory = vectorSearch.getMemoryById(db, id);
+
+      if (memory) {
+        vectorSearch.unpinMemory(db, id);
+        return { success: true };
+      }
+    }
+
+    return { success: false, error: "Memory not found" };
+  } catch (error) {
+    log("handleUnpinMemory: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleRunCleanup(): Promise<ApiResponse<{
+  deletedCount: number;
+  userCount: number;
+  projectCount: number;
+}>> {
+  try {
+    const { cleanupService } = await import("./cleanup-service.js");
+    const result = await cleanupService.runCleanup();
+    return { success: true, data: result };
+  } catch (error) {
+    log("handleRunCleanup: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleRunDeduplication(): Promise<ApiResponse<{
+  exactDuplicatesDeleted: number;
+  nearDuplicateGroups: any[];
+}>> {
+  try {
+    const { deduplicationService } = await import("./deduplication-service.js");
+    const result = await deduplicationService.detectAndRemoveDuplicates();
+    return { success: true, data: result };
+  } catch (error) {
+    log("handleRunDeduplication: error", { error: String(error) });
     return { success: false, error: String(error) };
   }
 }
