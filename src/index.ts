@@ -301,8 +301,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               "forget",
               "help",
               "capture-now",
-              "auto-capture-toggle",
-              "auto-capture-stats",
             ])
             .optional(),
           content: tool.schema.string().optional(),
@@ -376,16 +374,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                     {
                       command: "capture-now",
                       description: "Manually trigger memory capture for current session",
-                      args: [],
-                    },
-                    {
-                      command: "auto-capture-toggle",
-                      description: "Enable/disable automatic memory capture",
-                      args: [],
-                    },
-                    {
-                      command: "auto-capture-stats",
-                      description: "View auto-capture statistics for current session",
                       args: [],
                     },
                   ],
@@ -589,20 +577,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 return JSON.stringify({
                   success: true,
                   message: "Manual capture triggered",
-                });
-              }
-
-              case "auto-capture-toggle": {
-                return JSON.stringify({
-                  success: false,
-                  error: "Auto-capture toggle is no longer supported",
-                });
-              }
-
-              case "auto-capture-stats": {
-                return JSON.stringify({
-                  success: false,
-                  error: "Auto-capture stats is no longer supported",
                 });
               }
 
