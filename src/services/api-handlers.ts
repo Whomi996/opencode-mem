@@ -17,6 +17,7 @@ interface Memory {
   type?: string;
   scope: string;
   createdAt: string;
+  updatedAt?: string;
   metadata?: Record<string, unknown>;
   displayName?: string;
   userName?: string;
@@ -182,6 +183,7 @@ export async function handleListMemories(
       type: r.type,
       scope: r.container_tag?.includes("_user_") ? "user" : "project",
       createdAt: safeToISOString(r.created_at),
+      updatedAt: r.updated_at ? safeToISOString(r.updated_at) : undefined,
       metadata: safeJSONParse(r.metadata),
       displayName: r.display_name,
       userName: r.user_name,
@@ -454,6 +456,7 @@ export async function handleSearch(
       type: r.metadata?.type,
       scope: r.containerTag?.includes("_user_") ? "user" : "project",
       createdAt: safeToISOString(r.metadata?.createdAt),
+      updatedAt: r.metadata?.updatedAt ? safeToISOString(r.metadata.updatedAt) : undefined,
       similarity: Math.round(r.similarity * 100),
       metadata: r.metadata,
       displayName: r.displayName,

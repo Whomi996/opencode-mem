@@ -120,6 +120,15 @@ function renderMemories() {
       ? `<button class="btn-pin pinned" onclick="unpinMemory('${memory.id}')" title="Unpin"><i data-lucide="pin" class="icon icon-filled"></i></button>`
       : `<button class="btn-pin" onclick="pinMemory('${memory.id}')" title="Pin"><i data-lucide="pin" class="icon"></i></button>`;
     
+    const createdDate = formatDate(memory.createdAt);
+    const updatedDate = memory.updatedAt && memory.updatedAt !== memory.createdAt 
+      ? formatDate(memory.updatedAt) 
+      : null;
+    
+    const dateInfo = updatedDate 
+      ? `<span>Created: ${createdDate}</span><span>Updated: ${updatedDate}</span>`
+      : `<span>Created: ${createdDate}</span>`;
+    
     return `
       <div class="memory-card ${isSelected ? 'selected' : ''} ${isPinned ? 'pinned' : ''}" data-id="${memory.id}">
         <div class="memory-header">
@@ -140,7 +149,7 @@ function renderMemories() {
         </div>
         <div class="memory-content">${escapeHtml(memory.content)}</div>
         <div class="memory-footer">
-          <span>Created: ${formatDate(memory.createdAt)}</span>
+          ${dateInfo}
           <span>ID: ${memory.id}</span>
         </div>
       </div>
