@@ -206,7 +206,8 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     if (data.output && Array.isArray(data.output)) {
       for (const item of data.output) {
         if (item.type === "message" && item.content) {
-          assistantResponse = typeof item.content === "string" ? item.content : JSON.stringify(item.content);
+          assistantResponse =
+            typeof item.content === "string" ? item.content : JSON.stringify(item.content);
           break;
         }
       }

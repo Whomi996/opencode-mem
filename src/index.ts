@@ -109,9 +109,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       if (webServer) {
         await webServer.stop();
       }
-      
+
       memoryClient.close();
-      
+
       process.exit(0);
     } catch (error) {
       log("Shutdown error", { error: String(error) });

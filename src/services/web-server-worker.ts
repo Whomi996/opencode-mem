@@ -180,7 +180,7 @@ function serveStaticFile(filename: string, contentType: string): Response {
   try {
     const webDir = join(__dirname, "..", "web");
     const filePath = join(webDir, filename);
-    
+
     if (contentType.startsWith("image/")) {
       const content = readFileSync(filePath);
       return new Response(content, {
@@ -190,7 +190,7 @@ function serveStaticFile(filename: string, contentType: string): Response {
         },
       });
     }
-    
+
     const content = readFileSync(filePath, "utf-8");
 
     return new Response(content, {

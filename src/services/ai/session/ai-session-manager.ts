@@ -1,6 +1,12 @@
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
-import type { AISession, SessionCreateParams, SessionUpdateParams, AIProviderType, AIMessage } from "./session-types.js";
+import type {
+  AISession,
+  SessionCreateParams,
+  SessionUpdateParams,
+  AIProviderType,
+  AIMessage,
+} from "./session-types.js";
 import { connectionManager } from "../../sqlite/connection-manager.js";
 import { CONFIG } from "../../../config.js";
 
@@ -54,7 +60,9 @@ export class AISessionManager {
     this.db.run(
       "CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(ai_session_id, sequence)"
     );
-    this.db.run("CREATE INDEX IF NOT EXISTS idx_ai_messages_role ON ai_messages(ai_session_id, role)");
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_ai_messages_role ON ai_messages(ai_session_id, role)"
+    );
   }
 
   getSession(sessionId: string, provider: AIProviderType): AISession | null {
@@ -132,7 +140,10 @@ export class AISessionManager {
   }
 
   deleteSession(sessionId: string, provider: AIProviderType): void {
-    this.db.run(`DELETE FROM ai_sessions WHERE session_id = ? AND provider = ?`, [sessionId, provider]);
+    this.db.run(`DELETE FROM ai_sessions WHERE session_id = ? AND provider = ?`, [
+      sessionId,
+      provider,
+    ]);
   }
 
   addMessage(message: Omit<AIMessage, "id" | "createdAt">): void {
@@ -155,14 +166,18 @@ export class AISessionManager {
   }
 
   getMessages(aiSessionId: string): AIMessage[] {
-    const stmt = this.db.prepare("SELECT * FROM ai_messages WHERE ai_session_id = ? ORDER BY sequence ASC");
+    const stmt = this.db.prepare(
+      "SELECT * FROM ai_messages WHERE ai_session_id = ? ORDER BY sequence ASC"
+    );
     const rows = stmt.all(aiSessionId) as any[];
 
     return rows.map(this.rowToMessage);
   }
 
   getLastSequence(aiSessionId: string): number {
-    const stmt = this.db.prepare("SELECT MAX(sequence) as max_seq FROM ai_messages WHERE ai_session_id = ?");
+    const stmt = this.db.prepare(
+      "SELECT MAX(sequence) as max_seq FROM ai_messages WHERE ai_session_id = ?"
+    );
     const row = stmt.get(aiSessionId) as any;
 
     return row?.max_seq ?? -1;

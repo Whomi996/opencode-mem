@@ -76,7 +76,12 @@ const DEFAULT_KEYWORD_PATTERNS = [
 const DEFAULTS: Required<
   Omit<
     OpenCodeMemConfig,
-    "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey" | "memoryProvider"
+    | "embeddingApiUrl"
+    | "embeddingApiKey"
+    | "memoryModel"
+    | "memoryApiUrl"
+    | "memoryApiKey"
+    | "memoryProvider"
   >
 > & {
   embeddingApiUrl?: string;
@@ -337,7 +342,10 @@ export const CONFIG = {
     fileConfig.autoCaptureMaxIterations ?? DEFAULTS.autoCaptureMaxIterations,
   autoCaptureIterationTimeout:
     fileConfig.autoCaptureIterationTimeout ?? DEFAULTS.autoCaptureIterationTimeout,
-  memoryProvider: (fileConfig.memoryProvider ?? "openai-chat") as "openai-chat" | "openai-responses" | "anthropic",
+  memoryProvider: (fileConfig.memoryProvider ?? "openai-chat") as
+    | "openai-chat"
+    | "openai-responses"
+    | "anthropic",
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
   memoryApiKey: fileConfig.memoryApiKey,

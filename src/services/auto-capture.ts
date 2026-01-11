@@ -432,7 +432,12 @@ async function summarizeWithAI(
   const provider = AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
 
   const toolSchema = createToolCallSchema();
-  const result = await provider.executeToolCall(systemPrompt, conversationPrompt, toolSchema, sessionID);
+  const result = await provider.executeToolCall(
+    systemPrompt,
+    conversationPrompt,
+    toolSchema,
+    sessionID
+  );
 
   if (!result.success) {
     throw new Error(result.error || "Tool call failed");

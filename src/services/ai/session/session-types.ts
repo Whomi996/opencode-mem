@@ -1,14 +1,14 @@
-export type AIProviderType = 'openai-chat' | 'openai-responses' | 'anthropic';
+export type AIProviderType = "openai-chat" | "openai-responses" | "anthropic";
 
 export interface AIMessage {
   id?: number;
   aiSessionId: string;
   sequence: number;
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   toolCalls?: Array<{
     id: string;
-    type: 'function';
+    type: "function";
     function: { name: string; arguments: string };
   }>;
   toolCallId?: string;
