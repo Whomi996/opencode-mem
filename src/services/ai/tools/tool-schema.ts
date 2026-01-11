@@ -12,9 +12,14 @@ export interface ChatCompletionTool {
 }
 
 export interface ResponsesAPITool {
-  type: "custom";
+  type: "function";
   name: string;
   description: string;
+  parameters: {
+    type: string;
+    properties: Record<string, any>;
+    required: string[];
+  };
 }
 
 export interface AnthropicTool {
@@ -30,9 +35,10 @@ export interface AnthropicTool {
 export class ToolSchemaConverter {
   static toResponsesAPI(chatCompletionTool: ChatCompletionTool): ResponsesAPITool {
     return {
-      type: "custom",
+      type: "function",
       name: chatCompletionTool.function.name,
       description: chatCompletionTool.function.description,
+      parameters: chatCompletionTool.function.parameters,
     };
   }
 
