@@ -26,7 +26,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tickernelz/opencode-mem"
+    "url": "git+https://github.com/tickernelz/opencode-mem.git"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.0.162",
