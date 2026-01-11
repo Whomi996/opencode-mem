@@ -106,12 +106,18 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   }
 
   const shutdownHandler = async () => {
-    if (webServer) {
-      await webServer.stop();
+    try {
+      if (webServer) {
+        await webServer.stop();
+      }
+      
+      memoryClient.close();
+      
+      process.exit(0);
+    } catch (error) {
+      log("Shutdown error", { error: String(error) });
+      process.exit(1);
     }
-    
-    AIProviderFactory.closeSessionStore();
-    memoryClient.close();
   };
 
   process.on("SIGINT", shutdownHandler);

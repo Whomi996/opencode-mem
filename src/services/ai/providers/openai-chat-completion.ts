@@ -1,5 +1,5 @@
 import { BaseAIProvider, type ToolCallResult } from "./base-provider.js";
-import { SessionStore } from "../session/session-store.js";
+import { AISessionManager } from "../session/ai-session-manager.js";
 import type { ChatCompletionTool } from "../tools/tool-schema.js";
 import { log } from "../../logger.js";
 
@@ -19,11 +19,11 @@ interface ToolCallResponse {
 }
 
 export class OpenAIChatCompletionProvider extends BaseAIProvider {
-  private sessionStore: SessionStore;
+  private aiSessionManager: AISessionManager;
 
-  constructor(config: any, sessionStore: SessionStore) {
+  constructor(config: any, aiSessionManager: AISessionManager) {
     super(config);
-    this.sessionStore = sessionStore;
+    this.aiSessionManager = aiSessionManager;
   }
 
   getProviderName(): string {
@@ -40,17 +40,16 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
     toolSchema: ChatCompletionTool,
     sessionId: string
   ): Promise<ToolCallResult> {
-    let session = this.sessionStore.getSession(sessionId, "openai-chat");
-    const messageStore = this.sessionStore.getMessageStore();
+    let session = this.aiSessionManager.getSession(sessionId, "openai-chat");
 
     if (!session) {
-      session = this.sessionStore.createSession({
+      session = this.aiSessionManager.createSession({
         provider: "openai-chat",
         sessionId,
       });
     }
 
-    const existingMessages = messageStore.getMessages(session.id);
+    const existingMessages = this.aiSessionManager.getMessages(session.id);
     const messages: any[] = [];
 
     for (const msg of existingMessages) {
@@ -71,8 +70,8 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
     }
 
     if (messages.length === 0) {
-      const sequence = messageStore.getLastSequence(session.id) + 1;
-      messageStore.addMessage({
+      const sequence = this.aiSessionManager.getLastSequence(session.id) + 1;
+      this.aiSessionManager.addMessage({
         aiSessionId: session.id,
         sequence,
         role: "system",
@@ -82,8 +81,8 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
       messages.push({ role: "system", content: systemPrompt });
     }
 
-    const userSequence = messageStore.getLastSequence(session.id) + 1;
-    messageStore.addMessage({
+    const userSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
+    this.aiSessionManager.addMessage({
       aiSessionId: session.id,
       sequence: userSequence,
       role: "user",
@@ -147,7 +146,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
 
         const choice = data.choices[0];
 
-        const assistantSequence = messageStore.getLastSequence(session.id) + 1;
+        const assistantSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
         const assistantMsg: any = {
           aiSessionId: session.id,
           sequence: assistantSequence,
@@ -159,7 +158,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           assistantMsg.toolCalls = choice.message.tool_calls;
         }
 
-        messageStore.addMessage(assistantMsg);
+        this.aiSessionManager.addMessage(assistantMsg);
         messages.push(choice.message);
 
         if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
@@ -175,11 +174,11 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           }
         }
 
-        const retrySequence = messageStore.getLastSequence(session.id) + 1;
+        const retrySequence = this.aiSessionManager.getLastSequence(session.id) + 1;
         const retryPrompt =
           "Please use the save_memories tool to extract and save the memories from the conversation as instructed.";
 
-        messageStore.addMessage({
+        this.aiSessionManager.addMessage({
           aiSessionId: session.id,
           sequence: retrySequence,
           role: "user",

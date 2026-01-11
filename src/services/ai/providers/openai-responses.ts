@@ -1,5 +1,5 @@
 import { BaseAIProvider, type ToolCallResult } from "./base-provider.js";
-import { SessionStore } from "../session/session-store.js";
+import { AISessionManager } from "../session/ai-session-manager.js";
 import { ToolSchemaConverter, type ChatCompletionTool } from "../tools/tool-schema.js";
 import { log } from "../../logger.js";
 
@@ -23,11 +23,11 @@ interface ResponsesAPIOutput {
 }
 
 export class OpenAIResponsesProvider extends BaseAIProvider {
-  private sessionStore: SessionStore;
+  private aiSessionManager: AISessionManager;
 
-  constructor(config: any, sessionStore: SessionStore) {
+  constructor(config: any, aiSessionManager: AISessionManager) {
     super(config);
-    this.sessionStore = sessionStore;
+    this.aiSessionManager = aiSessionManager;
   }
 
   getProviderName(): string {
@@ -44,11 +44,10 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
     toolSchema: ChatCompletionTool,
     sessionId: string
   ): Promise<ToolCallResult> {
-    let session = this.sessionStore.getSession(sessionId, "openai-responses");
-    const messageStore = this.sessionStore.getMessageStore();
+    let session = this.aiSessionManager.getSession(sessionId, "openai-responses");
 
     if (!session) {
-      session = this.sessionStore.createSession({
+      session = this.aiSessionManager.createSession({
         provider: "openai-responses",
         sessionId,
       });
@@ -110,8 +109,8 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         conversationId = data.conversation || conversationId;
 
         if (iterations === 1) {
-          const userSeq = messageStore.getLastSequence(session.id) + 1;
-          messageStore.addMessage({
+          const userSeq = this.aiSessionManager.getLastSequence(session.id) + 1;
+          this.aiSessionManager.addMessage({
             aiSessionId: session.id,
             sequence: userSeq,
             role: "user",
@@ -122,7 +121,7 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         const toolCall = this.extractToolCall(data, toolSchema.function.name);
 
         if (toolCall) {
-          this.sessionStore.updateSession(sessionId, "openai-responses", {
+          this.aiSessionManager.updateSession(sessionId, "openai-responses", {
             conversationId,
           });
 

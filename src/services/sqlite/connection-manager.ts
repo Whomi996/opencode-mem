@@ -36,6 +36,7 @@ export class ConnectionManager {
   closeConnection(dbPath: string): void {
     const db = this.connections.get(dbPath);
     if (db) {
+      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
       this.connections.delete(dbPath);
     }
@@ -43,8 +44,12 @@ export class ConnectionManager {
 
   closeAll(): void {
     for (const [path, db] of this.connections) {
-      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
-      db.close();
+      try {
+        db.run("PRAGMA wal_checkpoint(TRUNCATE)");
+        db.close();
+      } catch (error) {
+        log("Error closing database", { path, error: String(error) });
+      }
     }
     this.connections.clear();
   }

@@ -1,32 +1,24 @@
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
-import type { AISession, SessionCreateParams, SessionUpdateParams, AIProviderType } from "./session-types.js";
-import { MessageStore } from "./message-store.js";
+import type { AISession, SessionCreateParams, SessionUpdateParams, AIProviderType, AIMessage } from "./session-types.js";
+import { connectionManager } from "../../sqlite/connection-manager.js";
+import { CONFIG } from "../../../config.js";
 
-export class SessionStore {
+const AI_SESSIONS_DB_NAME = "ai-sessions.db";
+
+export class AISessionManager {
   private db: Database;
-  private messageStore: MessageStore;
+  private readonly dbPath: string;
   private readonly sessionRetentionMs: number;
 
-  constructor(storagePath: string, retentionDays: number = 7) {
-    const dbDir = join(storagePath, "..");
-    if (!existsSync(dbDir)) {
-      mkdirSync(dbDir, { recursive: true });
-    }
-
-    const dbPath = join(dbDir, "ai-sessions.db");
-    this.db = new Database(dbPath);
-    this.sessionRetentionMs = retentionDays * 24 * 60 * 60 * 1000;
+  constructor() {
+    this.dbPath = join(CONFIG.storagePath, AI_SESSIONS_DB_NAME);
+    this.db = connectionManager.getConnection(this.dbPath);
+    this.sessionRetentionMs = CONFIG.aiSessionRetentionDays * 24 * 60 * 60 * 1000;
     this.initDatabase();
-    this.messageStore = new MessageStore(this.db);
   }
 
   private initDatabase(): void {
-    this.db.run("PRAGMA journal_mode = WAL");
-    this.db.run("PRAGMA synchronous = NORMAL");
-    this.db.run("PRAGMA foreign_keys = ON");
-
     this.db.run(`
       CREATE TABLE IF NOT EXISTS ai_sessions (
         id TEXT PRIMARY KEY,
@@ -43,10 +35,26 @@ export class SessionStore {
     this.db.run("CREATE INDEX IF NOT EXISTS idx_ai_sessions_session_id ON ai_sessions(session_id)");
     this.db.run("CREATE INDEX IF NOT EXISTS idx_ai_sessions_expires_at ON ai_sessions(expires_at)");
     this.db.run("CREATE INDEX IF NOT EXISTS idx_ai_sessions_provider ON ai_sessions(provider)");
-  }
 
-  getMessageStore(): MessageStore {
-    return this.messageStore;
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS ai_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ai_session_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tool_calls TEXT,
+        tool_call_id TEXT,
+        content_blocks TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (ai_session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE
+      )
+    `);
+
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(ai_session_id, sequence)"
+    );
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_ai_messages_role ON ai_messages(ai_session_id, role)");
   }
 
   getSession(sessionId: string, provider: AIProviderType): AISession | null {
@@ -128,13 +136,43 @@ export class SessionStore {
     this.db.run(`DELETE FROM ai_sessions WHERE session_id = ? AND provider = ?`, [sessionId, provider]);
   }
 
-  checkpoint(): void {
-    this.db.run("PRAGMA wal_checkpoint(PASSIVE)");
+  addMessage(message: Omit<AIMessage, "id" | "createdAt">): void {
+    this.db.run(
+      `INSERT INTO ai_messages (
+        ai_session_id, sequence, role, content, 
+        tool_calls, tool_call_id, content_blocks, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        message.aiSessionId,
+        message.sequence,
+        message.role,
+        message.content,
+        message.toolCalls ? JSON.stringify(message.toolCalls) : null,
+        message.toolCallId || null,
+        message.contentBlocks ? JSON.stringify(message.contentBlocks) : null,
+        Date.now(),
+      ]
+    );
   }
 
-  close(): void {
-    this.db.run("PRAGMA wal_checkpoint(TRUNCATE)");
-    this.db.close();
+  getMessages(aiSessionId: string): AIMessage[] {
+    const rows = this.db
+      .query("SELECT * FROM ai_messages WHERE ai_session_id = ? ORDER BY sequence ASC")
+      .all(aiSessionId) as any[];
+
+    return rows.map(this.rowToMessage);
+  }
+
+  getLastSequence(aiSessionId: string): number {
+    const row = this.db
+      .query("SELECT MAX(sequence) as max_seq FROM ai_messages WHERE ai_session_id = ?")
+      .get(aiSessionId) as any;
+
+    return row?.max_seq ?? -1;
+  }
+
+  clearMessages(aiSessionId: string): void {
+    this.db.run("DELETE FROM ai_messages WHERE ai_session_id = ?", [aiSessionId]);
   }
 
   private rowToSession(row: any): AISession {
@@ -149,4 +187,20 @@ export class SessionStore {
       expiresAt: row.expires_at,
     };
   }
+
+  private rowToMessage(row: any): AIMessage {
+    return {
+      id: row.id,
+      aiSessionId: row.ai_session_id,
+      sequence: row.sequence,
+      role: row.role,
+      content: row.content,
+      toolCalls: row.tool_calls ? JSON.parse(row.tool_calls) : undefined,
+      toolCallId: row.tool_call_id,
+      contentBlocks: row.content_blocks ? JSON.parse(row.content_blocks) : undefined,
+      createdAt: row.created_at,
+    };
+  }
 }
+
+export const aiSessionManager = new AISessionManager();

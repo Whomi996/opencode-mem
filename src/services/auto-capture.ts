@@ -385,9 +385,6 @@ ${conversationBody}
 
     buffer.lastCapturedMessageIndex = allMessages.length - 1;
     service.clearBuffer(sessionID);
-
-    const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
-    AIProviderFactory.checkpointSessionStore();
   } catch (error) {
     log("Auto-capture error", { sessionID, error: String(error) });
 
@@ -423,8 +420,6 @@ async function summarizeWithAI(
   }
 
   const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
-
-  AIProviderFactory.initializeSessionStore(CONFIG.storagePath, CONFIG.aiSessionRetentionDays);
 
   const providerConfig = {
     model: CONFIG.memoryModel,

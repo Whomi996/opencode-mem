@@ -1,5 +1,5 @@
 import { BaseAIProvider, type ToolCallResult } from "./base-provider.js";
-import { SessionStore } from "../session/session-store.js";
+import { AISessionManager } from "../session/ai-session-manager.js";
 import { ToolSchemaConverter, type ChatCompletionTool } from "../tools/tool-schema.js";
 import { log } from "../../logger.js";
 
@@ -28,11 +28,11 @@ interface AnthropicResponse {
 }
 
 export class AnthropicMessagesProvider extends BaseAIProvider {
-  private sessionStore: SessionStore;
+  private aiSessionManager: AISessionManager;
 
-  constructor(config: any, sessionStore: SessionStore) {
+  constructor(config: any, aiSessionManager: AISessionManager) {
     super(config);
-    this.sessionStore = sessionStore;
+    this.aiSessionManager = aiSessionManager;
   }
 
   getProviderName(): string {
@@ -49,18 +49,17 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
     toolSchema: ChatCompletionTool,
     sessionId: string
   ): Promise<ToolCallResult> {
-    let session = this.sessionStore.getSession(sessionId, "anthropic");
-    const messageStore = this.sessionStore.getMessageStore();
+    let session = this.aiSessionManager.getSession(sessionId, "anthropic");
 
     if (!session) {
-      session = this.sessionStore.createSession({
+      session = this.aiSessionManager.createSession({
         provider: "anthropic",
         sessionId,
         metadata: { systemPrompt },
       });
     }
 
-    const storedMessages = messageStore.getMessages(session.id);
+    const storedMessages = this.aiSessionManager.getMessages(session.id);
     const messages: AnthropicMessage[] = [];
 
     for (const msg of storedMessages) {
@@ -74,8 +73,8 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
       messages.push(anthropicMsg);
     }
 
-    const userSequence = messageStore.getLastSequence(session.id) + 1;
-    messageStore.addMessage({
+    const userSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
+    this.aiSessionManager.addMessage({
       aiSessionId: session.id,
       sequence: userSequence,
       role: "user",
@@ -132,8 +131,8 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
 
         const data = (await response.json()) as AnthropicResponse;
 
-        const assistantSequence = messageStore.getLastSequence(session.id) + 1;
-        messageStore.addMessage({
+        const assistantSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
+        this.aiSessionManager.addMessage({
           aiSessionId: session.id,
           sequence: assistantSequence,
           role: "assistant",
@@ -157,11 +156,11 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
         }
 
         if (data.stop_reason === "end_turn") {
-          const retrySequence = messageStore.getLastSequence(session.id) + 1;
+          const retrySequence = this.aiSessionManager.getLastSequence(session.id) + 1;
           const retryPrompt =
             "Please use the save_memories tool to extract and save the memories from the conversation as instructed.";
 
-          messageStore.addMessage({
+          this.aiSessionManager.addMessage({
             aiSessionId: session.id,
             sequence: retrySequence,
             role: "user",
