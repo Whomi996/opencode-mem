@@ -163,19 +163,19 @@ function extractAIContent(messages: any[]): {
 
 async function getLatestProjectMemory(containerTag: string): Promise<string | null> {
   try {
-    const result = await memoryClient.searchMemories("", containerTag);
-    log("Auto-capture: latest memory search result", { result });
+    const result = await memoryClient.listMemories(containerTag, 1);
+    log("Auto-capture: latest memory list result", { result });
     log("Auto-capture: container tag", { containerTag });
-    if (!result.success || result.results.length === 0) {
+    if (!result.success || result.memories.length === 0) {
       return null;
     }
 
-    const latest = result.results[0];
+    const latest = result.memories[0];
     if (!latest) {
       return null;
     }
 
-    const content = latest.memory;
+    const content = latest.summary;
 
     if (content.length <= 500) {
       return content;
