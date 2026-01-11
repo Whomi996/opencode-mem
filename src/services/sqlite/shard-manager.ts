@@ -127,6 +127,23 @@ export class ShardManager {
 
   private initShardDb(db: Database): void {
     db.run(`
+      CREATE TABLE IF NOT EXISTS shard_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    `);
+
+    db.run(`
+      INSERT OR REPLACE INTO shard_metadata (key, value) 
+      VALUES ('embedding_dimensions', '${CONFIG.embeddingDimensions}')
+    `);
+
+    db.run(`
+      INSERT OR REPLACE INTO shard_metadata (key, value) 
+      VALUES ('embedding_model', '${CONFIG.embeddingModel}')
+    `);
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
@@ -149,7 +166,7 @@ export class ShardManager {
     db.run(`
       CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories USING vec0(
         memory_id TEXT PRIMARY KEY,
-        embedding FLOAT[384]
+        embedding FLOAT[${CONFIG.embeddingDimensions}]
       )
     `);
 
@@ -201,7 +218,7 @@ export class ShardManager {
     const row = stmt.get(dbPath) as any;
     if (!row) return null;
 
-  return {
+    return {
       id: row.id,
       scope: row.scope,
       scopeHash: row.scope_hash,
@@ -211,6 +228,29 @@ export class ShardManager {
       isActive: row.is_active === 1,
       createdAt: row.created_at,
     };
+  }
+
+  deleteShard(shardId: number): void {
+    const stmt = this.metadataDb.prepare(`SELECT db_path FROM shards WHERE id = ?`);
+    const row = stmt.get(shardId) as any;
+    
+    if (row) {
+      connectionManager.closeConnection(row.db_path);
+      
+      try {
+        const fs = require("node:fs");
+        if (fs.existsSync(row.db_path)) {
+          fs.unlinkSync(row.db_path);
+        }
+      } catch (error) {
+        log("Error deleting shard file", { dbPath: row.db_path, error: String(error) });
+      }
+      
+      const deleteStmt = this.metadataDb.prepare(`DELETE FROM shards WHERE id = ?`);
+      deleteStmt.run(shardId);
+      
+      log("Shard deleted", { shardId, dbPath: row.db_path });
+    }
   }
 }
 

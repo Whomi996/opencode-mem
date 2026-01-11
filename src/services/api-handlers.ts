@@ -610,3 +610,37 @@ export async function handleRunDeduplication(): Promise<ApiResponse<{
     return { success: false, error: String(error) };
   }
 }
+
+export async function handleDetectMigration(): Promise<ApiResponse<{
+  needsMigration: boolean;
+  configDimensions: number;
+  configModel: string;
+  shardMismatches: any[];
+}>> {
+  try {
+    const { migrationService } = await import("./migration-service.js");
+    const result = await migrationService.detectDimensionMismatch();
+    return { success: true, data: result };
+  } catch (error) {
+    log("handleDetectMigration: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function handleRunMigration(strategy: "fresh-start" | "re-embed"): Promise<ApiResponse<{
+  success: boolean;
+  strategy: string;
+  deletedShards: number;
+  reEmbeddedMemories: number;
+  duration: number;
+  error?: string;
+}>> {
+  try {
+    const { migrationService } = await import("./migration-service.js");
+    const result = await migrationService.migrateToNewModel(strategy);
+    return { success: result.success, data: result };
+  } catch (error) {
+    log("handleRunMigration: error", { error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}

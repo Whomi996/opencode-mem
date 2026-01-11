@@ -21,6 +21,8 @@ if (!existsSync(DATA_DIR)) {
 interface OpenCodeMemConfig {
   storagePath?: string;
   embeddingModel?: string;
+  embeddingDimensions?: number;
+  embeddingPrefix?: string;
   embeddingApiUrl?: string;
   embeddingApiKey?: string;
   similarityThreshold?: number;
@@ -69,9 +71,10 @@ const DEFAULT_KEYWORD_PATTERNS = [
   "always\\s+remember",
 ];
 
-const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey">> & { embeddingApiUrl?: string; embeddingApiKey?: string; memoryModel?: string; memoryApiUrl?: string; memoryApiKey?: string } = {
+const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey" | "embeddingPrefix">> & { embeddingApiUrl?: string; embeddingApiKey?: string; memoryModel?: string; memoryApiUrl?: string; memoryApiKey?: string; embeddingPrefix?: string } = {
   storagePath: join(DATA_DIR, "data"),
-  embeddingModel: "Xenova/all-MiniLM-L6-v2",
+  embeddingModel: "Xenova/nomic-embed-text-v1.5",
+  embeddingDimensions: 768,
   similarityThreshold: 0.6,
   maxMemories: 5,
   maxProjectMemories: 10,
@@ -143,8 +146,17 @@ const CONFIG_TEMPLATE = `{
   // Embedding Model (for similarity search)
   // ============================================
   
-  // Local model (default, no API key needed)
-  "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+  // Default: Nomic Embed v1.5 (768 dimensions, 8192 context, multilingual)
+  "embeddingModel": "Xenova/nomic-embed-text-v1.5",
+  
+  // Auto-detected dimensions (768 for nomic, 384 for MiniLM)
+  // Only change if using custom model
+  // "embeddingDimensions": 768,
+  
+  // Other recommended models:
+  // "embeddingModel": "Xenova/all-MiniLM-L6-v2",        // 384 dims, fast, lightweight
+  // "embeddingModel": "Xenova/all-mpnet-base-v2",       // 768 dims, better quality
+  // "embeddingModel": "Xenova/bge-base-en-v1.5",        // 768 dims, English-only
   
   // Optional: Use OpenAI-compatible API for embeddings
   // "embeddingApiUrl": "https://api.openai.com/v1",
@@ -159,6 +171,16 @@ const CONFIG_TEMPLATE = `{
   "webServerHost": "127.0.0.1",
   
   // ============================================
+  // Database Settings
+  // ============================================
+  
+  "maxVectorsPerShard": 50000,
+  "autoCleanupEnabled": true,
+  "autoCleanupRetentionDays": 30,
+  "deduplicationEnabled": true,
+  "deduplicationSimilarityThreshold": 0.90,
+  
+  // ============================================
   // Auto-Capture Settings (REQUIRES EXTERNAL API)
   // ============================================
   
@@ -168,7 +190,7 @@ const CONFIG_TEMPLATE = `{
   
   "autoCaptureEnabled": true,
   
-  // REQUIRED for auto-capture (all 3 must be set):
+  //r auto-capture (all 3 must be set):
   "memoryModel": "gpt-4o-mini",
   "memoryApiUrl": "https://api.openai.com/v1",
   "memoryApiKey": "sk-...",
@@ -200,7 +222,7 @@ const CONFIG_TEMPLATE = `{
   "maxMemories": 5,
   "maxProjectMemories": 10,
   
-  // ===================================
+  // ============================================
   // Advanced Settings
   // ============================================
   
@@ -224,9 +246,32 @@ function ensureConfigExists(): void {
 
 ensureConfigExists();
 
+function getEmbeddingDimensions(model: string): number {
+  const dimensionMap: Record<string, number> = {
+    "Xenova/nomic-embed-text-v1.5": 768,
+    "Xenova/nomic-embed-text-v1": 768,
+    "Xenova/all-MiniLM-L6-v2": 384,
+    "Xenova/all-MiniLM-L12-v2": 384,
+    "Xenova/all-mpnet-base-v2": 768,
+    "Xenova/bge-base-en-v1.5": 768,
+    "Xenova/bge-small-en-v1.5": 384,
+    "Xenova/gte-small": 384,
+  };
+  return dimensionMap[model] || 768;
+}
+
+function getEmbeddingPrefix(model: string): string | undefined {
+  if (model.includes("nomic-embed")) {
+    return "search_document: ";
+  }
+  return undefined;
+}
+
 export const CONFIG = {
   storagePath: expandPath(fileConfig.storagePath ?? DEFAULTS.storagePath),
   embeddingModel: fileConfig.embeddingModel ?? DEFAULTS.embeddingModel,
+  embeddingDimensions: fileConfig.embeddingDimensions ?? getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
+  embeddingPrefix: fileConfig.embeddingPrefix ?? getEmbeddingPrefix(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
   embeddingApiUrl: fileConfig.embeddingApiUrl,
   embeddingApiKey: fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY,
   similarityThreshold: fileConfig.similarityThreshold ?? DEFAULTS.similarityThreshold,

@@ -14,6 +14,8 @@ import {
   handleUnpinMemory,
   handleRunCleanup,
   handleRunDeduplication,
+  handleDetectMigration,
+  handleRunMigration,
 } from "./api-handlers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -140,6 +142,21 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (path === "/api/deduplicate" && method === "POST") {
       const result = await handleRunDeduplication();
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/migration/detect" && method === "GET") {
+      const result = await handleDetectMigration();
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/migration/run" && method === "POST") {
+      const body = await req.json() as any;
+      const strategy = body.strategy || "fresh-start";
+      if (strategy !== "fresh-start" && strategy !== "re-embed") {
+        return jsonResponse({ success: false, error: "Invalid strategy" });
+      }
+      const result = await handleRunMigration(strategy);
       return jsonResponse(result);
     }
 
