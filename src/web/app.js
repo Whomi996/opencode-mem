@@ -111,7 +111,12 @@ function renderMemories() {
           ? `<span class="similarity-score">${memory.similarity}%</span>`
           : "";
 
-      const displayInfo = memory.displayName || memory.id;
+      let displayInfo = memory.displayName || memory.id;
+      if (memory.scope === "project" && memory.projectPath) {
+        const pathParts = memory.projectPath.split("/");
+        displayInfo = pathParts[pathParts.length - 1] || memory.projectPath;
+      }
+      
       let subtitle = "";
       if (memory.scope === "user" && memory.userEmail) {
         subtitle = `<span class="memory-subtitle">${escapeHtml(memory.userEmail)}</span>`;
