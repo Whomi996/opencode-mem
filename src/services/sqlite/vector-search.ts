@@ -50,6 +50,7 @@ export class VectorSearch {
       SELECT 
         m.id,
         m.content,
+        m.container_tag,
         m.metadata,
         m.display_name,
         m.user_name,
@@ -75,6 +76,7 @@ export class VectorSearch {
       memory: row.content,
       similarity: 1 - row.distance,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+      containerTag: row.container_tag,
       displayName: row.display_name,
       userName: row.user_name,
       userEmail: row.user_email,

@@ -529,6 +529,80 @@ function startAutoRefresh() {
   }, 30000);
 }
 
+async function checkMigrationStatus() {
+  const result = await fetchAPI('/api/migration/detect');
+  if (result.success && result.data.needsMigration) {
+    showMigrationWarning(result.data);
+  }
+}
+
+function showMigrationWarning(data) {
+  const section = document.getElementById('migration-section');
+  const message = document.getElementById('migration-message');
+  
+  const shardInfo = data.shardMismatches.length > 0 
+    ? `${data.shardMismatches.length} shard(s) have different dimensions` 
+    : 'dimension mismatch detected';
+  
+  message.textContent = `Model mismatch: Config uses ${data.configDimensions}D (${data.configModel}), but ${shardInfo}.`;
+  section.classList.remove('hidden');
+  
+  lucide.createIcons();
+}
+
+function toggleMigrationButtons() {
+  const checkbox = document.getElementById('migration-confirm-checkbox');
+  const freshBtn = document.getElementById('migration-fresh-btn');
+  const reembedBtn = document.getElementById('migration-reembed-btn');
+  
+  freshBtn.disabled = !checkbox.checked;
+  reembedBtn.disabled = !checkbox.checked;
+}
+
+async function runMigration(strategy) {
+  const checkbox = document.getElementById('migration-confirm-checkbox');
+  
+  if (!checkbox.checked) {
+    showToast('Please confirm you understand this operation is irreversible', 'error');
+    return;
+  }
+  
+  const strategyName = strategy === 'fresh-start' ? 'Fresh Start (Delete All)' : 'Re-embed (Preserve Data)';
+  
+  if (!confirm(`Run ${strategyName} migration?\n\nThis operation is IRREVERSIBLE and will:\n${strategy === 'fresh-start' ? '- DELETE all existing memories\n- Remove all shards' : '- Re-embed all memories with new model\n- This may take severales'}\n\nContinue?`)) {
+    return;
+  }
+  
+  showToast('Running migration... This may take a while.', 'info');
+  
+  const result = await fetchAPI('/api/migration/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strategy })
+  });
+  
+  if (result.success) {
+    const data = result.data;
+    let message = `Migration complete! `;
+    
+    if (strategy === 'fresh-start') {
+      message += `Deleted ${data.deletedShards} shard(s). Duration: ${(data.duration / 1000).toFixed(2)}s`;
+    } else {
+      message += `Re-embedded ${data.reEddedMemories} memories. Duration: ${(data.duration / 1000).toFixed(2)}s`;
+    }
+    
+    showToast(message, 'success');
+    
+    document.getElementById('migration-section').classList.add('hidden');
+    document.getElementById('migration-confirm-checkbox').checked = false;
+    
+    await loadMemories();
+    await loadStats();
+  } else {
+    showToast(result.error || 'Migration failed', 'error');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scope-filter').addEventListener('change', handleFilterChange);
   document.getElementById('tag-filter').addEventListener('change', () => {
@@ -561,6 +635,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('cleanup-btn').addEventListener('click', runCleanup);
   document.getElementById('deduplicate-btn').addEventListener('click', runDeduplication);
   
+  document.getElementById('migration-confirm-checkbox').addEventListener('change', toggleMigrationButtons);
+  document.getElementById('migration-fresh-btn').addEventListener('click', () => runMigration('fresh-start'));
+  document.getElementById('migration-reembed-btn').addEventListener('click', () => runMigration('re-embed'));
+  
   document.getElementById('edit-modal').addEventListener('click', (e) => {
     if (e.target.id === 'edit-modal') closeModal();
   });
@@ -568,6 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadTags();
   await loadMemories();
   await loadStats();
+  await checkMigrationStatus();
   
   startAutoRefresh();
   

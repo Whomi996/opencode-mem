@@ -452,7 +452,7 @@ export async function handleSearch(
       id: r.id,
       content: r.memory,
       type: r.metadata?.type,
-      scope: r.metadata?.containerTag?.includes("_user_") ? "user" : "project",
+      scope: r.containerTag?.includes("_user_") ? "user" : "project",
       createdAt: safeToISOString(r.metadata?.createdAt),
       similarity: Math.round(r.similarity * 100),
       metadata: r.metadata,
