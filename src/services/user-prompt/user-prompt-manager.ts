@@ -1,0 +1,123 @@
+import { Database } from "bun:sqlite";
+import { join } from "node:path";
+import { connectionManager } from "../sqlite/connection-manager.js";
+import { CONFIG } from "../../config.js";
+
+const USER_PROMPTS_DB_NAME = "user-prompts.db";
+
+export interface UserPrompt {
+  id: string;
+  sessionId: string;
+  messageId: string;
+  projectPath: string | null;
+  content: string;
+  createdAt: number;
+  captured: boolean;
+}
+
+export class UserPromptManager {
+  private db: Database;
+  private readonly dbPath: string;
+
+  constructor() {
+    this.dbPath = join(CONFIG.storagePath, USER_PROMPTS_DB_NAME);
+    this.db = connectionManager.getConnection(this.dbPath);
+    this.initDatabase();
+  }
+
+  private initDatabase(): void {
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS user_prompts (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        project_path TEXT,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        captured BOOLEAN DEFAULT 0
+      )
+    `);
+
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_session ON user_prompts(session_id)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_captured ON user_prompts(captured)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_created ON user_prompts(created_at DESC)");
+    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_project ON user_prompts(project_path)");
+  }
+
+  savePrompt(sessionId: string, messageId: string, projectPath: string, content: string): string {
+    const id = `prompt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const now = Date.now();
+
+    const stmt = this.db.prepare(`
+      INSERT INTO user_prompts (id, session_id, message_id, project_path, content, created_at, captured)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `);
+
+    stmt.run(id, sessionId, messageId, projectPath, content, now);
+    return id;
+  }
+
+  getLastUncapturedPrompt(sessionId: string): UserPrompt | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM user_prompts 
+      WHERE session_id = ? AND captured = 0
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `);
+
+    const row = stmt.get(sessionId) as any;
+    if (!row) return null;
+
+    return this.rowToPrompt(row);
+  }
+
+  deletePrompt(promptId: string): void {
+    const stmt = this.db.prepare(`DELETE FROM user_prompts WHERE id = ?`);
+    stmt.run(promptId);
+  }
+
+  markAsCaptured(promptId: string): void {
+    const stmt = this.db.prepare(`UPDATE user_prompts SET captured = 1 WHERE id = ?`);
+    stmt.run(promptId);
+  }
+
+  countUncapturedPrompts(): number {
+    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM user_prompts WHERE captured = 0`);
+    const row = stmt.get() as any;
+    return row?.count || 0;
+  }
+
+  getUncapturedPrompts(limit: number): UserPrompt[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM user_prompts 
+      WHERE captured = 0 
+      ORDER BY created_at ASC 
+      LIMIT ?
+    `);
+
+    const rows = stmt.all(limit) as any[];
+    return rows.map((row) => this.rowToPrompt(row));
+  }
+
+  markMultipleAsCaptured(promptIds: string[]): void {
+    if (promptIds.length === 0) return;
+
+    const placeholders = promptIds.map(() => "?").join(",");
+    const stmt = this.db.prepare(`UPDATE user_prompts SET captured = 1 WHERE id IN (${placeholders})`);
+    stmt.run(...promptIds);
+  }
+
+  private rowToPrompt(row: any): UserPrompt {
+    return {
+      id: row.id,
+      sessionId: row.session_id,
+      messageId: row.message_id,
+      projectPath: row.project_path,
+      content: row.content,
+      createdAt: row.created_at,
+      captured: row.captured === 1,
+    };
+  }
+}
+
+export const userPromptManager = new UserPromptManager();

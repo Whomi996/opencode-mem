@@ -33,11 +33,14 @@ export interface ConversationIngestResponse {
 
 export interface MemoryMetadata {
   type?: MemoryType;
-  source?: "manual" | "auto-capture" | "import" | "api";
+  source?: "manual" | "auto-capture" | "import" | "api" | "user-learning";
   tool?: string;
   sessionID?: string;
   reasoning?: string;
   captureTimestamp?: number;
+  promptCount?: number;
+  analysisTimestamp?: number;
+  promptId?: string;
   displayName?: string;
   userName?: string;
   userEmail?: string;

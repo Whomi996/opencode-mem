@@ -6,7 +6,9 @@ import { memoryClient } from "./services/client.js";
 import { formatContextForPrompt } from "./services/context.js";
 import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
-import { AutoCaptureService, performAutoCapture } from "./services/auto-capture.js";
+import { performAutoCapture } from "./services/auto-capture.js";
+import { performUserMemoryLearning } from "./services/user-memory-learning.js";
+import { userPromptManager } from "./services/user-prompt/user-prompt-manager.js";
 import { startWebServer, WebServer } from "./services/web-server.js";
 
 import { isConfigured, CONFIG } from "./config.js";
@@ -41,7 +43,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   const tags = getTags(directory);
   const injectedSessions = new Set<string>();
-  const autoCaptureService = new AutoCaptureService();
   let webServer: WebServer | null = null;
 
   if (!isConfigured()) {
@@ -139,6 +140,24 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
         if (!userMessage.trim()) return;
 
+        const lastPrompt = userPromptManager.getLastUncapturedPrompt(input.sessionID);
+        
+        if (lastPrompt) {
+          log("Detected cancelled prompt, cleaning up", { 
+            sessionID: input.sessionID, 
+            cancelledPromptId: lastPrompt.id 
+          });
+          
+          userPromptManager.deletePrompt(lastPrompt.id);
+        }
+
+        userPromptManager.savePrompt(
+          input.sessionID,
+          output.message.id,
+          directory,
+          userMessage
+        );
+
         if (detectMemoryKeyword(userMessage)) {
           const nudgePart: Part = {
             id: `memory-nudge-${Date.now()}`,
@@ -176,16 +195,16 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               await memoryClient.warmup();
 
               if (ctx.client?.tui) {
-                const autoCaptureStatus = autoCaptureService.isEnabled()
+                const autoCaptureStatus = CONFIG.autoCaptureEnabled && CONFIG.memoryModel && CONFIG.memoryApiUrl && CONFIG.memoryApiKey
                   ? "Auto-capture: enabled"
-                  : autoCaptureService.getDisabledReason() || "Auto-capture: disabled";
+                  : "Auto-capture: disabled";
 
                 await ctx.client.tui
                   .showToast({
                     body: {
                       title: "Memory System Ready!",
                       message: autoCaptureStatus,
-                      variant: autoCaptureService.isEnabled() ? "success" : "warning",
+                      variant: CONFIG.autoCaptureEnabled ? "success" : "warning",
                       duration: 3000,
                     },
                   })
@@ -565,7 +584,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               }
 
               case "capture-now": {
-                await performAutoCapture(ctx, autoCaptureService, toolCtx.sessionID, directory);
+                const sessionID = toolCtx.sessionID;
+                await performAutoCapture(ctx, sessionID, directory);
                 return JSON.stringify({
                   success: true,
                   message: "Manual capture triggered",
@@ -573,31 +593,16 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               }
 
               case "auto-capture-toggle": {
-                const enabled = autoCaptureService.toggle();
                 return JSON.stringify({
-                  success: true,
-                  message: `Auto-capture ${enabled ? "enabled" : "disabled"}`,
-                  enabled,
+                  success: false,
+                  error: "Auto-capture toggle is no longer supported",
                 });
               }
 
               case "auto-capture-stats": {
-                const stats = autoCaptureService.getStats(toolCtx.sessionID);
-                if (!stats) {
-                  return JSON.stringify({
-                    success: true,
-                    message: "No capture data for this session",
-                  });
-                }
                 return JSON.stringify({
-                  success: true,
-                  stats: {
-                    lastCaptureTokens: stats.lastCaptureTokens,
-                    minutesSinceCapture: Math.floor(stats.timeSinceCapture / 60000),
-                    tokenThreshold: CONFIG.autoCaptureTokenThreshold,
-                    minTokens: CONFIG.autoCaptureMinTokens,
-                    enabled: autoCaptureService.isEnabled(),
-                  },
+                  success: false,
+                  error: "Auto-capture stats is no longer supported",
                 });
               }
 
@@ -621,37 +626,16 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       const event = input.event;
       const props = event.properties as Record<string, unknown> | undefined;
 
-      if (event.type === "message.updated") {
-        if (!autoCaptureService.isEnabled()) return;
-
-        const info = props?.info as any;
-        if (!info) return;
-
-        const sessionID = info.sessionID;
-        if (!sessionID) return;
-
-        if (info.role !== "assistant" || !info.finish) return;
-
-        const tokens = info.tokens;
-        if (!tokens) return;
-
-        const totalUsed = tokens.input + tokens.cache.read + tokens.output;
-
-        const shouldCapture = autoCaptureService.checkTokenThreshold(sessionID, totalUsed);
-
-        if (shouldCapture) {
-          performAutoCapture(ctx, autoCaptureService, sessionID, directory).catch((err) =>
-            log("Auto-capture failed", { error: String(err) })
-          );
-        }
-      }
-
-      if (event.type === "session.deleted" && props?.sessionID) {
-        autoCaptureService.cleanup(props.sessionID as string);
-      }
-
       if (event.type === "session.idle") {
         if (!isConfigured()) return;
+
+        const sessionID = props?.sessionID as string | undefined;
+
+        if (sessionID) {
+          await performAutoCapture(ctx, sessionID, directory);
+        }
+
+        await performUserMemoryLearning(ctx, directory);
 
         const { cleanupService } = await import("./services/cleanup-service.js");
 

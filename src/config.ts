@@ -32,11 +32,6 @@ interface OpenCodeMemConfig {
   containerTagPrefix?: string;
   keywordPatterns?: string[];
   autoCaptureEnabled?: boolean;
-  autoCaptureTokenThreshold?: number;
-  autoCaptureMinTokens?: number;
-  autoCaptureMaxMemories?: number;
-  autoCaptureSummaryMaxLength?: number;
-  autoCaptureContextWindow?: number;
   autoCaptureMaxIterations?: number;
   autoCaptureIterationTimeout?: number;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic";
@@ -52,6 +47,7 @@ interface OpenCodeMemConfig {
   autoCleanupRetentionDays?: number;
   deduplicationEnabled?: boolean;
   deduplicationSimilarityThreshold?: number;
+  userMemoryAnalysisInterval?: number;
 }
 
 const DEFAULT_KEYWORD_PATTERNS = [
@@ -102,11 +98,6 @@ const DEFAULTS: Required<
   containerTagPrefix: "opencode",
   keywordPatterns: [],
   autoCaptureEnabled: true,
-  autoCaptureTokenThreshold: 10000,
-  autoCaptureMinTokens: 20000,
-  autoCaptureMaxMemories: 10,
-  autoCaptureSummaryMaxLength: 0,
-  autoCaptureContextWindow: 3,
   autoCaptureMaxIterations: 5,
   autoCaptureIterationTimeout: 30000,
   aiSessionRetentionDays: 7,
@@ -118,6 +109,7 @@ const DEFAULTS: Required<
   autoCleanupRetentionDays: 30,
   deduplicationEnabled: true,
   deduplicationSimilarityThreshold: 0.9,
+  userMemoryAnalysisInterval: 10,
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -233,7 +225,7 @@ const CONFIG_TEMPLATE = `{
   
   // Anthropic (with session support):
   //   "memoryProvider": "anthropic"
-  //  yModel": "claude-3-5-haiku-20241022"
+  //   "memoryModel": "claude-3-5-haiku-20241022"
   //   "memoryApiUrl": "https://api.anthropic.com/v1"
   //   "memoryApiKey": "sk-ant-..."
   
@@ -243,21 +235,23 @@ const CONFIG_TEMPLATE = `{
   //   "memoryApiUrl": "https://api.groq.com/openai/v1"
   //   "memoryApiKey": "gsk_..."
   
-  // Token thresholds
-  "autoCaptureTokenThreshold": 10000,
-  "autoCaptureMinTokens": 20000,
-  "autoCaptureMaxMemories": 10,
-  "autoCaptureContextWindow": 3,
-  
   // Multi-iteration settings (for openai-responses and anthropic)
   "autoCaptureMaxIterations": 5,
   "autoCaptureIterationTimeout": 30000,
   
-  // Summary length: 0 = AI decides optimal length, >0 = character limit
-  "autoCaptureSummaryMaxLength": 0,
-  
   // Session management
   "aiSessionRetentionDays": 7,
+  
+  // ============================================
+  // User Memory Learning
+  // ============================================
+  
+  // Analyze user prompts every N prompts to learn patterns and preferences
+  // When N uncaptured prompts accumulate, AI will analyze them to identify:
+  // - User preferences (code style, communication style)
+  // - User patterns (recurring topics, problem domains)
+  // - User workflows (development habits, sequences)
+  "userMemoryAnalysisInterval": 10,
   
   // ============================================
   // Search Settings
@@ -330,14 +324,6 @@ export const CONFIG = {
     ...(fileConfig.keywordPatterns ?? []).filter(isValidRegex),
   ],
   autoCaptureEnabled: fileConfig.autoCaptureEnabled ?? DEFAULTS.autoCaptureEnabled,
-  autoCaptureTokenThreshold:
-    fileConfig.autoCaptureTokenThreshold ?? DEFAULTS.autoCaptureTokenThreshold,
-  autoCaptureMinTokens: fileConfig.autoCaptureMinTokens ?? DEFAULTS.autoCaptureMinTokens,
-  autoCaptureMaxMemories: fileConfig.autoCaptureMaxMemories ?? DEFAULTS.autoCaptureMaxMemories,
-  autoCaptureSummaryMaxLength:
-    fileConfig.autoCaptureSummaryMaxLength ?? DEFAULTS.autoCaptureSummaryMaxLength,
-  autoCaptureContextWindow:
-    fileConfig.autoCaptureContextWindow ?? DEFAULTS.autoCaptureContextWindow,
   autoCaptureMaxIterations:
     fileConfig.autoCaptureMaxIterations ?? DEFAULTS.autoCaptureMaxIterations,
   autoCaptureIterationTimeout:
@@ -360,6 +346,8 @@ export const CONFIG = {
   deduplicationEnabled: fileConfig.deduplicationEnabled ?? DEFAULTS.deduplicationEnabled,
   deduplicationSimilarityThreshold:
     fileConfig.deduplicationSimilarityThreshold ?? DEFAULTS.deduplicationSimilarityThreshold,
+  userMemoryAnalysisInterval:
+    fileConfig.userMemoryAnalysisInterval ?? DEFAULTS.userMemoryAnalysisInterval,
 };
 
 export function isConfigured(): boolean {
