@@ -58,12 +58,11 @@ export class AISessionManager {
   }
 
   getSession(sessionId: string, provider: AIProviderType): AISession | null {
-    const row = this.db
-      .query(`
-        SELECT * FROM ai_sessions 
-        WHERE session_id = ? AND provider = ? AND expires_at > ?
-      `)
-      .get(sessionId, provider, Date.now()) as any;
+    const stmt = this.db.prepare(`
+      SELECT * FROM ai_sessions 
+      WHERE session_id = ? AND provider = ? AND expires_at > ?
+    `);
+    const row = stmt.get(sessionId, provider, Date.now()) as any;
 
     if (!row) return null;
 
@@ -156,17 +155,15 @@ export class AISessionManager {
   }
 
   getMessages(aiSessionId: string): AIMessage[] {
-    const rows = this.db
-      .query("SELECT * FROM ai_messages WHERE ai_session_id = ? ORDER BY sequence ASC")
-      .all(aiSessionId) as any[];
+    const stmt = this.db.prepare("SELECT * FROM ai_messages WHERE ai_session_id = ? ORDER BY sequence ASC");
+    const rows = stmt.all(aiSessionId) as any[];
 
     return rows.map(this.rowToMessage);
   }
 
   getLastSequence(aiSessionId: string): number {
-    const row = this.db
-      .query("SELECT MAX(sequence) as max_seq FROM ai_messages WHERE ai_session_id = ?")
-      .get(aiSessionId) as any;
+    const stmt = this.db.prepare("SELECT MAX(sequence) as max_seq FROM ai_messages WHERE ai_session_id = ?");
+    const row = stmt.get(aiSessionId) as any;
 
     return row?.max_seq ?? -1;
   }

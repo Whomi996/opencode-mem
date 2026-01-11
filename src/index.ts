@@ -8,7 +8,6 @@ import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
 import { AutoCaptureService, performAutoCapture } from "./services/auto-capture.js";
 import { startWebServer, WebServer } from "./services/web-server.js";
-import { AIProviderFactory } from "./services/ai/ai-provider-factory.js";
 
 import { isConfigured, CONFIG } from "./config.js";
 import { log } from "./services/logger.js";
