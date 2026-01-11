@@ -239,21 +239,15 @@ export async function handleAddMemory(data: {
       type: data.type,
       createdAt: now,
       updatedAt: now,
-      metadata: JSON.stringify({
-        type: data.type,
-        displayName: data.displayName,
-        userName: data.userName,
-        userEmail: data.userEmail,
-        projectPath: data.projectPath,
-        projectName: data.projectName,
-        gitRepoUrl: data.gitRepoUrl,
-      }),
       displayName: data.displayName,
       userName: data.userName,
       userEmail: data.userEmail,
       projectPath: data.projectPath,
       projectName: data.projectName,
       gitRepoUrl: data.gitRepoUrl,
+      metadata: JSON.stringify({
+        source: "api",
+      }),
     };
 
     const db = connectionManager.getConnection(shard.dbPath);

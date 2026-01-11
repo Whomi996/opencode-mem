@@ -176,7 +176,11 @@ export class LocalMemoryClient {
     containerTag: string,
     metadata?: { 
       type?: MemoryType; 
+      source?: "manual" | "auto-capture" | "import" | "api";
       tool?: string; 
+      sessionID?: string;
+      reasoning?: string;
+      captureTimestamp?: number;
       displayName?: string;
       userName?: string;
       userEmail?: string;
@@ -197,21 +201,23 @@ export class LocalMemoryClient {
       const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Date.now();
 
+      const { displayName, userName, userEmail, projectPath, projectName, gitRepoUrl, type, ...dynamicMetadata } = metadata || {};
+
       const record: MemoryRecord = {
         id,
         content,
         vector,
         containerTag,
-        type: metadata?.type,
+        type,
         createdAt: now,
         updatedAt: now,
-        metadata: metadata ? JSON.stringify(metadata) : undefined,
-        displayName: metadata?.displayName,
-        userName: metadata?.userName,
-        userEmail: metadata?.userEmail,
-        projectPath: metadata?.projectPath,
-        projectName: metadata?.projectName,
-        gitRepoUrl: metadata?.gitRepoUrl,
+        displayName,
+        userName,
+        userEmail,
+        projectPath,
+        projectName,
+        gitRepoUrl,
+        metadata: Object.keys(dynamicMetadata).length > 0 ? JSON.stringify(dynamicMetadata) : undefined,
       };
 
       const db = connectionManager.getConnection(shard.dbPath);
