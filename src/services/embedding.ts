@@ -63,8 +63,6 @@ export class EmbeddingService {
       await this.initPromise;
     }
 
-    const prefixedText = CONFIG.embeddingPrefix ? `${CONFIG.embeddingPrefix}${text}` : text;
-
     if (CONFIG.embeddingApiUrl && CONFIG.embeddingApiKey) {
       const response = await fetch(`${CONFIG.embeddingApiUrl}/embeddings`, {
         method: "POST",
@@ -73,7 +71,7 @@ export class EmbeddingService {
           "Authorization": `Bearer ${CONFIG.embeddingApiKey}`,
         },
         body: JSON.stringify({
-          input: prefixedText,
+          input: text,
           model: CONFIG.embeddingModel,
         }),
       });
@@ -86,7 +84,7 @@ export class EmbeddingService {
       return new Float32Array(data.data[0].embedding);
     }
 
-    const output = await this.pipe(prefixedText, { pooling: "mean", normalize: true });
+    const output = await this.pipe(text, { pooling: "mean", normalize: true });
     return new Float32Array(output.data);
   }
 

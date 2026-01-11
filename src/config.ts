@@ -73,7 +73,7 @@ const DEFAULT_KEYWORD_PATTERNS = [
 
 const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey" | "embeddingPrefix">> & { embeddingApiUrl?: string; embeddingApiKey?: string; memoryModel?: string; memoryApiUrl?: string; memoryApiKey?: string; embeddingPrefix?: string } = {
   storagePath: join(DATA_DIR, "data"),
-  embeddingModel: "Xenova/nomic-embed-text-v1.5",
+  embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
   similarityThreshold: 0.6,
   maxMemories: 5,
@@ -146,17 +146,17 @@ const CONFIG_TEMPLATE = `{
   // Embedding Model (for similarity search)
   // ============================================
   
-  // Default: Nomic Embed v1.5 (768 dimensions, 8192 context, multilingual)
-  "embeddingModel": "Xenova/nomic-embed-text-v1.5",
+  // Default: Nomic Embed v1 (768 dimensions, 8192 context, multilingual)
+  "embeddingModel": "Xenova/nomic-embed-text-v1",
   
-  // Auto-detected dimensions (768 for nomic, 384 for MiniLM)
-  // Only change if using custom model
+  // Auto-detected dimensions (no need to set manually)
   // "embeddingDimensions": 768,
   
   // Other recommended models:
-  // "embeddingModel": "Xenova/all-MiniLM-L6-v2",        // 384 dims, fast, lightweight
-  // "embeddingModel": "Xenova/all-mpnet-base-v2",       // 768 dims, better quality
-  // "embeddingModel": "Xenova/bge-base-en-v1.5",        // 768 dims, English-only
+  // "embeddingModel": "Xenova/jina-embeddings-v2-base-en",  // 768 dims, English-only, 8192 context
+  // "embeddingModel": "Xenova/jina-embeddings-v2-small-en", // 512 dims, faster, 8192 context
+  // "embeddingModel": "Xenova/all-MiniLM-L6-v2",            // 384 dims, very fast, 512 context
+  // "embeddingModel": "Xenova/all-mpnet-base-v2",           // 768 dims, good quality, 512 context
   
   // Optional: Use OpenAI-compatible API for embeddings
   // "embeddingApiUrl": "https://api.openai.com/v1",
@@ -190,7 +190,7 @@ const CONFIG_TEMPLATE = `{
   
   "autoCaptureEnabled": true,
   
-  //r auto-capture (all 3 must be set):
+  // REQUIRED for auto-capture (all 3 must be set):
   "memoryModel": "gpt-4o-mini",
   "memoryApiUrl": "https://api.openai.com/v1",
   "memoryApiKey": "sk-...",
@@ -248,22 +248,26 @@ ensureConfigExists();
 
 function getEmbeddingDimensions(model: string): number {
   const dimensionMap: Record<string, number> = {
-    "Xenova/nomic-embed-text-v1.5": 768,
     "Xenova/nomic-embed-text-v1": 768,
+    "Xenova/nomic-embed-text-v1-unsupervised": 768,
+    "Xenova/nomic-embed-text-v1-ablated": 768,
+    "Xenova/jina-embeddings-v2-base-en": 768,
+    "Xenova/jina-embeddings-v2-base-zh": 768,
+    "Xenova/jina-embeddings-v2-base-de": 768,
+    "Xenova/jina-embeddings-v2-small-en": 512,
     "Xenova/all-MiniLM-L6-v2": 384,
     "Xenova/all-MiniLM-L12-v2": 384,
     "Xenova/all-mpnet-base-v2": 768,
     "Xenova/bge-base-en-v1.5": 768,
     "Xenova/bge-small-en-v1.5": 384,
     "Xenova/gte-small": 384,
+    "Xenova/GIST-small-Embedding-v0": 384,
+    "Xenova/text-embedding-ada-002": 1536,
   };
   return dimensionMap[model] || 768;
 }
 
 function getEmbeddingPrefix(model: string): string | undefined {
-  if (model.includes("nomic-embed")) {
-    return "search_document: ";
-  }
   return undefined;
 }
 
