@@ -79,14 +79,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
           requestBody.instructions = systemPrompt;
         }
 
-        log("OpenAI Responses API request", {
-          iteration: iterations,
-          model: this.config.model,
-          hasConversationId: !!conversationId,
-          toolName: tool.name,
-          promptLength: currentPrompt.length,
-        });
-
         const response = await fetch(`${this.config.apiUrl}/responses`, {
           method: "POST",
           headers: {
@@ -115,27 +107,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
 
         const data = (await response.json()) as ResponsesAPIOutput;
 
-        log("OpenAI Responses API response", {
-          iteration: iterations,
-          responseId: data.id,
-          outputCount: data.output?.length || 0,
-          outputTypes: data.output?.map((item) => item.type) || [],
-          hasConversation: !!data.conversation,
-        });
-
-        data.output?.forEach((item, index) => {
-          log(`Response output item ${index}`, {
-            type: item.type,
-            hasId: !!item.id,
-            hasCallId: !!item.call_id,
-            hasName: !!item.name,
-            name: item.name,
-            hasArguments: !!item.arguments,
-            argumentsLength: item.arguments?.length || 0,
-            hasContent: !!item.content,
-          });
-        });
-
         conversationId = data.conversation || conversationId;
 
         if (iterations === 1) {
@@ -151,13 +122,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         const toolCall = this.extractToolCall(data, toolSchema.function.name);
 
         if (toolCall) {
-          log("Tool call extracted successfully", {
-            iteration: iterations,
-            toolName: toolSchema.function.name,
-            hasMemories: !!toolCall.memories,
-            memoriesCount: toolCall.memories?.length || 0,
-          });
-
           this.sessionStore.updateSession(sessionId, "openai-responses", {
             conversationId,
           });
@@ -210,11 +174,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         if (item.arguments) {
           try {
             const parsed = JSON.parse(item.arguments);
-            log("Function call arguments parsed", {
-              toolName: item.name,
-              callId: item.call_id,
-              argumentsLength: item.arguments.length,
-            });
             return parsed;
           } catch (error) {
             log("Failed to parse function call arguments", {
