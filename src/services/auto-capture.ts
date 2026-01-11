@@ -50,17 +50,20 @@ export class AutoCaptureService {
     this.tokenThreshold = CONFIG.autoCaptureTokenThreshold;
     this.minTokens = CONFIG.autoCaptureMinTokens;
     this.maxMemories = CONFIG.autoCaptureMaxMemories;
-    
-    this.enabled = CONFIG.autoCaptureEnabled && 
-                   !!CONFIG.memoryModel && 
-                   !!CONFIG.memoryApiUrl && 
-                   !!CONFIG.memoryApiKey;
-    
+
+    this.enabled =
+      CONFIG.autoCaptureEnabled &&
+      !!CONFIG.memoryModel &&
+      !!CONFIG.memoryApiUrl &&
+      !!CONFIG.memoryApiKey;
+
     if (CONFIG.autoCaptureEnabled && !this.enabled) {
-      log("Auto-capture disabled: external API not configured (memoryModel, memoryApiUrl, memoryApiKey required)");
+      log(
+        "Auto-capture disabled: external API not configured (memoryModel, memoryApiUrl, memoryApiKey required)"
+      );
     }
-    
-    if (this.enabled && CONFIG.memoryApiUrl?.includes('ollama')) {
+
+    if (this.enabled && CONFIG.memoryApiUrl?.includes("ollama")) {
       log("Warning: Ollama may not support tool calling. Auto-capture might fail.");
     }
   }
@@ -68,7 +71,7 @@ export class AutoCaptureService {
   isEnabled(): boolean {
     return this.enabled;
   }
-  
+
   getDisabledReason(): string | null {
     if (!CONFIG.autoCaptureEnabled) return "Auto-capture disabled in config";
     if (!CONFIG.memoryModel) return "memoryModel not configured";
@@ -113,11 +116,12 @@ export class AutoCaptureService {
   }
 
   getSystemPrompt(hasContext: boolean): string {
-    const summaryGuidance = CONFIG.autoCaptureSummaryMaxLength > 0
-      ? `Keep summaries under ${CONFIG.autoCaptureSummaryMaxLength} characters.`
-      : "Extract key details and important information. Be concise but complete.";
+    const summaryGuidance =
+      CONFIG.autoCaptureSummaryMaxLength > 0
+        ? `Keep summaries under ${CONFIG.autoCaptureSummaryMaxLength} characters.`
+        : "Extract key details and important information. Be concise but complete.";
 
-    const contextNote = hasContext 
+    const contextNote = hasContext
       ? `\n\nIMPORTANT: Messages marked [CONTEXT] were already analyzed in previous capture. They are provided for context only. Focus your extraction on messages marked [NEW]. Do not duplicate memories from context messages.`
       : "";
 
@@ -196,21 +200,23 @@ export async function performAutoCapture(
   try {
     service.markCapturing(sessionID);
 
-    await ctx.client?.tui.showToast({
-      body: {
-        title: "Auto-Capture",
-        message: "Analyzing conversation...",
-        variant: "info",
-        duration: 2000,
-      },
-    }).catch(() => {});
+    await ctx.client?.tui
+      .showToast({
+        body: {
+          title: "Auto-Capture",
+          message: "Analyzing conversation...",
+          variant: "info",
+          duration: 2000,
+        },
+      })
+      .catch(() => {});
 
     if (!ctx.client) {
       throw new Error("Client not available");
     }
 
-    const response = await ctx.client.session.messages({ 
-      path: { id: sessionID }
+    const response = await ctx.client.session.messages({
+      path: { id: sessionID },
     });
 
     if (!response.data) {
@@ -267,31 +273,31 @@ export async function performAutoCapture(
     }
 
     const conversationParts: string[] = [];
-    
+
     for (let i = 0; i < messagesToAnalyze.length; i++) {
       const msg = messagesToAnalyze[i];
       if (!msg) continue;
-      
+
       const globalIndex = startIndex + i;
       const isNewMessage = globalIndex > lastIndex;
-      
+
       const role = msg.info?.role;
       if (role !== "user" && role !== "assistant") continue;
 
       const roleLabel = role.toUpperCase();
       const marker = isNewMessage ? "[NEW]" : "[CONTEXT]";
       let content = "";
-      
+
       if (msg.parts && Array.isArray(msg.parts)) {
         const textParts = msg.parts.filter((p: any) => p.type === "text" && p.text);
         content = textParts.map((p: any) => p.text).join("\n");
-        
+
         const toolParts = msg.parts.filter((p: any) => p.type === "tool");
         if (toolParts.length > 0) {
           content += "\n[Tools: " + toolParts.map((p: any) => p.name || "unknown").join(", ") + "]";
         }
       }
-      
+
       if (content) {
         conversationParts.push(`${marker} ${roleLabel}: ${content}`);
       }
@@ -313,7 +319,7 @@ Metadata:
 - Messages in this analysis: ${messagesToAnalyze.length}
 - Context messages (already captured): ${contextMessageCount}
 - New messages (focus here): ${newMessageCount}
-${lastIndex >= 0 ? `- Previous capture ended at message index: ${lastIndex}` : '- This is the first capture for this session'}
+${lastIndex >= 0 ? `- Previous capture ended at message index: ${lastIndex}` : "- This is the first capture for this session"}
 
 The following is a past conversation between a USER and an AI ASSISTANT.
 Extract meaningful memories from this conversation.
@@ -323,9 +329,9 @@ ${conversationBody}
 === END OF CONVERSATION ===`;
 
     const systemPrompt = service.getSystemPrompt(lastIndex >= 0);
-    
+
     const captureResponse = await summarizeWithAI(ctx, sessionID, systemPrompt, conversationText);
-    
+
     if (!captureResponse || !captureResponse.memories || captureResponse.memories.length === 0) {
       service.clearBuffer(sessionID);
       return;
@@ -339,23 +345,19 @@ ${conversationBody}
 
       const tagInfo = memory.scope === "user" ? tags.user : tags.project;
 
-      const result = await memoryClient.addMemory(
-        memory.summary,
-        tagInfo.tag,
-        {
-          type: memory.type,
-          source: "auto-capture",
-          sessionID,
-          reasoning: memory.reasoning,
-          captureTimestamp: Date.now(),
-          displayName: tagInfo.displayName,
-          userName: tagInfo.userName,
-          userEmail: tagInfo.userEmail,
-          projectPath: tagInfo.projectPath,
-          projectName: tagInfo.projectName,
-          gitRepoUrl: tagInfo.gitRepoUrl,
-        }
-      );
+      const result = await memoryClient.addMemory(memory.summary, tagInfo.tag, {
+        type: memory.type,
+        source: "auto-capture",
+        sessionID,
+        reasoning: memory.reasoning,
+        captureTimestamp: Date.now(),
+        displayName: tagInfo.displayName,
+        userName: tagInfo.userName,
+        userEmail: tagInfo.userEmail,
+        projectPath: tagInfo.projectPath,
+        projectName: tagInfo.projectName,
+        gitRepoUrl: tagInfo.gitRepoUrl,
+      });
 
       if (result.success) {
         results.push({ scope: memory.scope, id: result.id });
@@ -367,17 +369,19 @@ ${conversationBody}
       return;
     }
 
-    const userCount = results.filter(r => r.scope === "user").length;
-    const projectCount = results.filter(r => r.scope === "project").length;
+    const userCount = results.filter((r) => r.scope === "user").length;
+    const projectCount = results.filter((r) => r.scope === "project").length;
 
-    await ctx.client?.tui.showToast({
-      body: {
-        title: "Memory Captured",
-        message: `Saved ${userCount} user + ${projectCount} project memories`,
-        variant: "success",
-        duration: 3000,
-      },
-    }).catch(() => {});
+    await ctx.client?.tui
+      .showToast({
+        body: {
+          title: "Memory Captured",
+          message: `Saved ${userCount} user + ${projectCount} project memories`,
+          variant: "success",
+          duration: 3000,
+        },
+      })
+      .catch(() => {});
 
     log("Auto-capture: success", {
       sessionID,
@@ -391,14 +395,16 @@ ${conversationBody}
   } catch (error) {
     log("Auto-capture error", { sessionID, error: String(error) });
 
-    await ctx.client?.tui.showToast({
-      body: {
-        title: "Auto-Capture Failed",
-        message: String(error),
-        variant: "error",
-        duration: 5000,
-      },
-    }).catch(() => {});
+    await ctx.client?.tui
+      .showToast({
+        body: {
+          title: "Auto-Capture Failed",
+          message: String(error),
+          variant: "error",
+          duration: 5000,
+        },
+      })
+      .catch(() => {});
 
     service.clearBuffer(sessionID);
   }
@@ -415,16 +421,19 @@ async function summarizeWithAI(
   }
 
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl || !CONFIG.memoryApiKey) {
-    throw new Error("External API not configured. Auto-capture requires memoryModel, memoryApiUrl, and memoryApiKey.");
+    throw new Error(
+      "External API not configured. Auto-capture requires memoryModel, memoryApiUrl, and memoryApiKey."
+    );
   }
 
   return await callExternalAPIWithToolCalling(systemPrompt, conversationPrompt);
 }
 
 function createToolCallSchema() {
-  const summaryDescription = CONFIG.autoCaptureSummaryMaxLength > 0
-    ? `Memory summary (maximum ${CONFIG.autoCaptureSummaryMaxLength} characters). Focus on most critical information.`
-    : "Memory summary with key details and important information. Be concise but complete.";
+  const summaryDescription =
+    CONFIG.autoCaptureSummaryMaxLength > 0
+      ? `Memory summary (maximum ${CONFIG.autoCaptureSummaryMaxLength} characters). Focus on most critical information.`
+      : "Memory summary with key details and important information. Be concise but complete.";
 
   return {
     type: "function" as const,
@@ -442,55 +451,60 @@ function createToolCallSchema() {
               properties: {
                 summary: {
                   type: "string",
-                  description: summaryDescription
+                  description: summaryDescription,
                 },
                 scope: {
                   type: "string",
                   enum: ["user", "project"],
-                  description: "user: cross-project user preferences/behaviors. project: project-specific knowledge/decisions."
+                  description:
+                    "user: cross-project user preferences/behaviors. project: project-specific knowledge/decisions.",
                 },
                 type: {
                   type: "string",
-                  description: "Category of this memory (e.g., preference, architecture, workflow, bug-fix, configuration, pattern, etc). Choose the most appropriate category."
+                  description:
+                    "Category of this memory (e.g., preference, architecture, workflow, bug-fix, configuration, pattern, etc). Choose the most appropriate category.",
                 },
                 reasoning: {
                   type: "string",
-                  description: "Why this memory is important and worth retaining"
-                }
+                  description: "Why this memory is important and worth retaining",
+                },
               },
-              required: ["summary", "scope", "type"]
-            }
-          }
+              required: ["summary", "scope", "type"],
+            },
+          },
         },
-        required: ["memories"]
-      }
-    }
+        required: ["memories"],
+      },
+    },
   };
 }
 
-async function callExternalAPIWithToolCalling(systemPrompt: string, conversationPrompt: string): Promise<CaptureResponse> {
+async function callExternalAPIWithToolCalling(
+  systemPrompt: string,
+  conversationPrompt: string
+): Promise<CaptureResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
     const tools = [createToolCallSchema()];
-    
+
     const requestBody = {
       model: CONFIG.memoryModel,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: conversationPrompt }
+        { role: "user", content: conversationPrompt },
       ],
       tools: tools,
       tool_choice: { type: "function", name: "save_memories" },
       temperature: 0.3,
     };
-    
+
     const response = await fetch(`${CONFIG.memoryApiUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${CONFIG.memoryApiKey}`,
+        Authorization: `Bearer ${CONFIG.memoryApiKey}`,
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
@@ -498,38 +512,37 @@ async function callExternalAPIWithToolCalling(systemPrompt: string, conversation
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => response.statusText);
-      log("Auto-capture API error", { 
-        status: response.status, 
-        error: errorText 
+      log("Auto-capture API error", {
+        status: response.status,
+        error: errorText,
       });
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json() as ToolCallResponse;
-    
+    const data = (await response.json()) as ToolCallResponse;
+
     if (!data.choices || !data.choices[0]) {
       throw new Error("Invalid API response format");
     }
 
     const choice = data.choices[0];
-    
+
     if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {
       log("Auto-capture: tool calling not used", {
-        finishReason: choice.finish_reason
+        finishReason: choice.finish_reason,
       });
       throw new Error("Tool calling not supported or not used by provider");
     }
-    
+
     const toolCall = choice.message.tool_calls[0];
-    
+
     if (!toolCall || toolCall.function.name !== "save_memories") {
       throw new Error("Invalid tool call response");
     }
-    
+
     const parsed = JSON.parse(toolCall.function.arguments);
-    
+
     return validateCaptureResponse(parsed);
-    
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("API request timeout (30s)");
@@ -541,27 +554,29 @@ async function callExternalAPIWithToolCalling(systemPrompt: string, conversation
 }
 
 function validateCaptureResponse(data: any): CaptureResponse {
-  if (!data || typeof data !== 'object') {
+  if (!data || typeof data !== "object") {
     throw new Error("Response is not an object");
   }
-  
+
   if (!Array.isArray(data.memories)) {
     throw new Error("memories field is not an array");
   }
-  
+
   const validMemories = data.memories.filter((m: any) => {
-    return m && 
-           typeof m === 'object' && 
-           typeof m.summary === 'string' && 
-           m.summary.trim().length > 0 &&
-           (m.scope === 'user' || m.scope === 'project') &&
-           typeof m.type === 'string' &&
-           m.type.trim().length > 0;
+    return (
+      m &&
+      typeof m === "object" &&
+      typeof m.summary === "string" &&
+      m.summary.trim().length > 0 &&
+      (m.scope === "user" || m.scope === "project") &&
+      typeof m.type === "string" &&
+      m.type.trim().length > 0
+    );
   });
-  
+
   if (validMemories.length === 0) {
     throw new Error("No valid memories in response");
   }
-  
+
   return { memories: validMemories };
 }

@@ -68,7 +68,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (path === "/api/memories" && method === "POST") {
-      const body = await req.json() as any;
+      const body = (await req.json()) as any;
       const result = await handleAddMemory(body);
       return jsonResponse(result);
     }
@@ -87,13 +87,13 @@ async function handleRequest(req: Request): Promise<Response> {
       if (!id) {
         return jsonResponse({ success: false, error: "Invalid ID" });
       }
-      const body = await req.json() as any;
+      const body = (await req.json()) as any;
       const result = await handleUpdateMemory(id, body);
       return jsonResponse(result);
     }
 
     if (path === "/api/memories/bulk-delete" && method === "POST") {
-      const body = await req.json() as any;
+      const body = (await req.json()) as any;
       const result = await handleBulkDelete(body.ids || []);
       return jsonResponse(result);
     }
@@ -103,11 +103,11 @@ async function handleRequest(req: Request): Promise<Response> {
       const tag = url.searchParams.get("tag") || undefined;
       const page = parseInt(url.searchParams.get("page") || "1");
       const pageSize = parseInt(url.searchParams.get("pageSize") || "20");
-      
+
       if (!query) {
         return jsonResponse({ success: false, error: "query parameter required" });
       }
-      
+
       const result = await handleSearch(query, tag, page, pageSize);
       return jsonResponse(result);
     }
@@ -151,7 +151,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (path === "/api/migration/run" && method === "POST") {
-      const body = await req.json() as any;
+      const body = (await req.json()) as any;
       const strategy = body.strategy || "fresh-start";
       if (strategy !== "fresh-start" && strategy !== "re-embed") {
         return jsonResponse({ success: false, error: "Invalid strategy" });
@@ -162,10 +162,13 @@ async function handleRequest(req: Request): Promise<Response> {
 
     return new Response("Not Found", { status: 404 });
   } catch (error) {
-    return jsonResponse({
-      success: false,
-      error: String(error),
-    }, 500);
+    return jsonResponse(
+      {
+        success: false,
+        error: String(error),
+      },
+      500
+    );
   }
 }
 
@@ -174,7 +177,7 @@ function serveStaticFile(filename: string, contentType: string): Response {
     const webDir = join(__dirname, "..", "web");
     const filePath = join(webDir, filename);
     const content = readFileSync(filePath, "utf-8");
-    
+
     return new Response(content, {
       headers: {
         "Content-Type": contentType,

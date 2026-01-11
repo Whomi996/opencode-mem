@@ -11,9 +11,7 @@ const TIMEOUT_MS = 30000;
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
-    ),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)),
   ]);
 }
 
@@ -36,11 +34,9 @@ export class EmbeddingService {
 
         log("Downloading embedding model", { model: CONFIG.embeddingModel });
 
-        this.pipe = await pipeline(
-          "feature-extraction",
-          CONFIG.embeddingModel,
-          { progress_callback: progressCallback }
-        );
+        this.pipe = await pipeline("feature-extraction", CONFIG.embeddingModel, {
+          progress_callback: progressCallback,
+        });
 
         this.isWarmedUp = true;
         log("Embedding model ready");
@@ -68,7 +64,7 @@ export class EmbeddingService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${CONFIG.embeddingApiKey}`,
+          Authorization: `Bearer ${CONFIG.embeddingApiKey}`,
         },
         body: JSON.stringify({
           input: text,

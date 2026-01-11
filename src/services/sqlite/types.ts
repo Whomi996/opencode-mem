@@ -1,6 +1,6 @@
 export interface ShardInfo {
   id: number;
-  scope: 'user' | 'project';
+  scope: "user" | "project";
   scopeHash: string;
   shardIndex: number;
   dbPath: string;

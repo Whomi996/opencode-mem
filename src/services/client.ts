@@ -12,14 +12,12 @@ function safeToISOString(timestamp: any): string {
     if (timestamp === null || timestamp === undefined) {
       return new Date().toISOString();
     }
-    const numValue = typeof timestamp === 'bigint' 
-      ? Number(timestamp) 
-      : Number(timestamp);
-    
+    const numValue = typeof timestamp === "bigint" ? Number(timestamp) : Number(timestamp);
+
     if (isNaN(numValue) || numValue < 0) {
       return new Date().toISOString();
     }
-    
+
     return new Date(numValue).toISOString();
   } catch {
     return new Date().toISOString();
@@ -27,7 +25,7 @@ function safeToISOString(timestamp: any): string {
 }
 
 function safeJSONParse(jsonString: any): any {
-  if (!jsonString || typeof jsonString !== 'string') {
+  if (!jsonString || typeof jsonString !== "string") {
     return undefined;
   }
   try {
@@ -37,14 +35,17 @@ function safeJSONParse(jsonString: any): any {
   }
 }
 
-function extractScopeFromContainerTag(containerTag: string): { scope: 'user' | 'project', hash: string } {
-  const parts = containerTag.split('_');
+function extractScopeFromContainerTag(containerTag: string): {
+  scope: "user" | "project";
+  hash: string;
+} {
+  const parts = containerTag.split("_");
   if (parts.length >= 3) {
-    const scope = parts[1] as 'user' | 'project';
-    const hash = parts.slice(2).join('_');
+    const scope = parts[1] as "user" | "project";
+    const hash = parts.slice(2).join("_");
     return { scope, hash };
   }
-  return { scope: 'user', hash: containerTag };
+  return { scope: "user", hash: containerTag };
 }
 
 interface ProfileData {
@@ -107,7 +108,7 @@ export class LocalMemoryClient {
       const shards = shardManager.getAllShards(scope, hash);
 
       if (shards.length === 0) {
-     log("searchMemories: no shards found", { containerTag });
+        log("searchMemories: no shards found", { containerTag });
         return { success: true as const, results: [], total: 0, timing: 0 };
       }
 
@@ -174,10 +175,10 @@ export class LocalMemoryClient {
   async addMemory(
     content: string,
     containerTag: string,
-    metadata?: { 
-      type?: MemoryType; 
+    metadata?: {
+      type?: MemoryType;
       source?: "manual" | "auto-capture" | "import" | "api";
-      tool?: string; 
+      tool?: string;
       sessionID?: string;
       reasoning?: string;
       captureTimestamp?: number;
@@ -201,7 +202,16 @@ export class LocalMemoryClient {
       const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Date.now();
 
-      const { displayName, userName, userEmail, projectPath, projectName, gitRepoUrl, type, ...dynamicMetadata } = metadata || {};
+      const {
+        displayName,
+        userName,
+        userEmail,
+        projectPath,
+        projectName,
+        gitRepoUrl,
+        type,
+        ...dynamicMetadata
+      } = metadata || {};
 
       const record: MemoryRecord = {
         id,
@@ -217,7 +227,8 @@ export class LocalMemoryClient {
         projectPath,
         projectName,
         gitRepoUrl,
-        metadata: Object.keys(dynamicMetadata).length > 0 ? JSON.stringify(dynamicMetadata) : undefined,
+        metadata:
+          Object.keys(dynamicMetadata).length > 0 ? JSON.stringify(dynamicMetadata) : undefined,
       };
 
       const db = connectionManager.getConnection(shard.dbPath);
@@ -275,7 +286,7 @@ export class LocalMemoryClient {
         return {
           success: true as const,
           memories: [],
-          pagination: { currentPage: 1, totalItems: 0, totalPages: 0 }
+          pagination: { currentPage: 1, totalItems: 0, totalPages: 0 },
         };
       }
 
@@ -306,7 +317,7 @@ export class LocalMemoryClient {
       return {
         success: true as const,
         memories,
-        pagination: { currentPage: 1, totalItems: memories.length, totalPages: 1 }
+        pagination: { currentPage: 1, totalItems: memories.length, totalPages: 1 },
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -315,7 +326,7 @@ export class LocalMemoryClient {
         success: false as const,
         error: errorMessage,
         memories: [],
-        pagination: { currentPage: 1, totalItems: 0, totalPages: 0 }
+        pagination: { currentPage: 1, totalItems: 0, totalPages: 0 },
       };
     }
   }

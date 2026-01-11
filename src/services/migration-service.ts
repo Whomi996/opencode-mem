@@ -48,22 +48,24 @@ export class MigrationService {
     for (const shard of allShards) {
       try {
         const db = connectionManager.getConnection(shard.dbPath);
-        
-        const metadataResult = db.prepare(`
+
+        const metadataResult = db
+          .prepare(
+            `
           SELECT key, value FROM shard_metadata 
           WHERE key IN ('embedding_dimensions', 'embedding_model')
-        `).all() as Array<{ key: string; value: string }>;
+        `
+          )
+          .all() as Array<{ key: string; value: string }>;
 
-        const metadata = Object.fromEntries(
-          metadataResult.map(row => [row.key, row.value])
-        );
+        const metadata = Object.fromEntries(metadataResult.map((row) => [row.key, row.value]));
 
         const storedDimensions = parseInt(metadata.embedding_dimensions || "0");
         const storedModel = metadata.embedding_model || "unknown";
 
         if (storedDimensions !== CONFIG.embeddingDimensions) {
           const vectorCount = vectorSearch.countAllVectors(db);
-          
+
           mismatches.push({
             shardId: shard.id,
             dbPath: shard.dbPath,
@@ -73,9 +75,9 @@ export class MigrationService {
           });
         }
       } catch (error) {
-        log("Migration: error checking shard", { 
-          shardId: shard.id, 
-          error: String(error) 
+        log("Migration: error checking shard", {
+          shardId: shard.id,
+          error: String(error),
         });
       }
     }
@@ -160,14 +162,14 @@ export class MigrationService {
         shardManager.deleteShard(shardInfo.shardId);
         deletedShards++;
 
-        log("Migration: deleted shard", { 
+        log("Migration: deleted shard", {
           shardId: shardInfo.shardId,
-          vectorCount: shardInfo.vectorCount 
+          vectorCount: shardInfo.vectorCount,
         });
       } catch (error) {
-        log("Migration: error deleting shard", { 
-          shardId: shardInfo.shardId, 
-          error: String(error) 
+        log("Migration: error deleting shard", {
+          shardId: shardInfo.shardId,
+          error: String(error),
         });
       }
     }
@@ -193,10 +195,7 @@ export class MigrationService {
   ): Promise<MigrationResult> {
     await embeddingService.warmup();
 
-    const totalMemories = mismatch.shardMismatches.reduce(
-      (sum, s) => sum + s.vectorCount, 
-      0
-    );
+    const totalMemories = mismatch.shardMismatches.reduce((sum, s) => sum + s.vectorCount, 0);
 
     this.reportProgress({
       phase: "preparing",
@@ -298,22 +297,22 @@ export class MigrationService {
               currentShard: String(shardInfo.shardId),
             });
           } catch (error) {
-            log("Migration: error re-embedding memory", { 
-              memoryId: memory.id, 
-              error: String(error) 
+            log("Migration: error re-embedding memory", {
+              memoryId: memory.id,
+              error: String(error),
             });
             processedCount++;
           }
         }
 
-        log("Migration: re-embedded shard", { 
+        log("Migration: re-embedded shard", {
           shardId: shardInfo.shardId,
-          count: tempMemories.length 
+          count: tempMemories.length,
         });
       } catch (error) {
-        log("Migration: error processing shard", { 
-          shardId: shardInfo.shardId, 
-          error: String(error) 
+        log("Migration: error processing shard", {
+          shardId: shardInfo.shardId,
+          error: String(error),
         });
       }
     }

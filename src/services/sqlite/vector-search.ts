@@ -107,9 +107,7 @@ export class VectorSearch {
 
     allResults.sort((a, b) => b.similarity - a.similarity);
 
-    return allResults
-      .filter(r => r.similarity >= similarityThreshold)
-      .slice(0, limit);
+    return allResults.filter((r) => r.similarity >= similarityThreshold).slice(0, limit);
   }
 
   deleteVector(db: Database, memoryId: string): void {

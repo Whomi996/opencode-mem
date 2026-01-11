@@ -39,10 +39,10 @@ export class CleanupService {
     try {
       log("Cleanup: starting", { retentionDays: CONFIG.autoCleanupRetentionDays });
 
-      const cutoffTime = Date.now() - (CONFIG.autoCleanupRetentionDays * 24 * 60 * 60 * 1000);
+      const cutoffTime = Date.now() - CONFIG.autoCleanupRetentionDays * 24 * 60 * 60 * 1000;
 
-      const userShards = shardManager.getAllShards('user', '');
-      const projectShards = shardManager.getAllShards('project', '');
+      const userShards = shardManager.getAllShards("user", "");
+      const projectShards = shardManager.getAllShards("project", "");
       const allShards = [...userShards, ...projectShards];
 
       let totalDeleted = 0;
@@ -52,10 +52,14 @@ export class CleanupService {
       for (const shard of allShards) {
         const db = connectionManager.getConnection(shard.dbPath);
 
-        const oldMemories = db.prepare(`
+        const oldMemories = db
+          .prepare(
+            `
           SELECT id, container_tag FROM memories 
           WHERE updated_at < ? AND is_pinned = 0
-        `).all(cutoffTime) as any[];
+        `
+          )
+          .all(cutoffTime) as any[];
 
         if (oldMemories.length === 0) continue;
 
@@ -65,9 +69,9 @@ export class CleanupService {
             shardManager.decrementVectorCount(shard.id);
             totalDeleted++;
 
-            if (memory.container_tag?.includes('_user_')) {
+            if (memory.container_tag?.includes("_user_")) {
               userDeleted++;
-            } else if (memory.container_tag?.includes('_project_')) {
+            } else if (memory.container_tag?.includes("_project_")) {
               projectDeleted++;
             }
           } catch (error) {
@@ -76,11 +80,11 @@ export class CleanupService {
         }
       }
 
-      log("Cleanup: completed", { 
-        totalDeleted, 
-        userDeleted, 
+      log("Cleanup: completed", {
+        totalDeleted,
+        userDeleted,
         projectDeleted,
-        cutoffTime: new Date(cutoffTime).toISOString()
+        cutoffTime: new Date(cutoffTime).toISOString(),
       });
 
       return {
@@ -88,7 +92,6 @@ export class CleanupService {
         userCount: userDeleted,
         projectCount: projectDeleted,
       };
-
     } finally {
       this.isRunning = false;
     }

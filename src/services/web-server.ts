@@ -68,7 +68,7 @@ export class WebServer {
             resolve();
           } else if (response.type === "error") {
             const errorMsg = response.error || "Unknown error";
-            
+
             if (errorMsg.includes("EADDRINUSE") || errorMsg.includes("address already in use")) {
               this.isOwner = false;
               log("Web server already running (port in use)");
@@ -94,7 +94,6 @@ export class WebServer {
       } as WorkerMessage);
 
       await startedPromise;
-
     } catch (error) {
       this.isOwner = false;
       if (this.worker) {
@@ -157,7 +156,7 @@ export class WebServer {
   async checkServerAvailable(): Promise<boolean> {
     try {
       const response = await fetch(`${this.getUrl()}/api/stats`, {
-        method: 'GET',
+        method: "GET",
         signal: AbortSignal.timeout(2000),
       });
       return response.ok;

@@ -12,7 +12,7 @@ export class ConnectionManager {
     db.run("PRAGMA cache_size = -64000");
     db.run("PRAGMA temp_store = MEMORY");
     db.run("PRAGMA foreign_keys = ON");
-    
+
     sqliteVec.load(db);
   }
 
@@ -21,7 +21,7 @@ export class ConnectionManager {
       return this.connections.get(dbPath)!;
     }
 
-    const dir = dbPath.substring(0, dbPath.lastIndexOf('/'));
+    const dir = dbPath.substring(0, dbPath.lastIndexOf("/"));
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
@@ -29,7 +29,7 @@ export class ConnectionManager {
     const db = new Database(dbPath);
     this.initDatabase(db);
     this.connections.set(dbPath, db);
-    
+
     log("SQLite connection opened", { path: dbPath });
     return db;
   }

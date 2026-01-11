@@ -38,18 +38,18 @@ export class ShardManager {
     `);
   }
 
-  private getShardPath(scope: 'user' | 'project', scopeHash: string, shardIndex: number): string {
+  private getShardPath(scope: "user" | "project", scopeHash: string, shardIndex: number): string {
     const dir = join(CONFIG.storagePath, `${scope}s`);
     return join(dir, `${scope}_${scopeHash}_shard_${shardIndex}.db`);
   }
 
-  getActiveShard(scope: 'user' | 'project', scopeHash: string): ShardInfo | null {
+  getActiveShard(scope: "user" | "project", scopeHash: string): ShardInfo | null {
     const stmt = this.metadataDb.prepare(`
       SELECT * FROM shards 
       WHERE scope = ? AND scope_hash = ? AND is_active = 1
       ORDER BY shard_index DESC LIMIT 1
     `);
-    
+
     const row = stmt.get(scope, scopeHash) as any;
     if (!row) return null;
 
@@ -65,11 +65,11 @@ export class ShardManager {
     };
   }
 
-  getAllShards(scope: 'user' | 'project', scopeHash: string): ShardInfo[] {
+  getAllShards(scope: "user" | "project", scopeHash: string): ShardInfo[] {
     let stmt;
     let rows;
-    
-    if (scopeHash === '') {
+
+    if (scopeHash === "") {
       stmt = this.metadataDb.prepare(`
         SELECT * FROM shards 
         WHERE scope = ?
@@ -84,7 +84,7 @@ export class ShardManager {
       `);
       rows = stmt.all(scope, scopeHash) as any[];
     }
-    
+
     return rows.map((row: any) => ({
       id: row.id,
       scope: row.scope,
@@ -97,7 +97,7 @@ export class ShardManager {
     }));
   }
 
-  createShard(scope: 'user' | 'project', scopeHash: string, shardIndex: number): ShardInfo {
+  createShard(scope: "user" | "project", scopeHash: string, shardIndex: number): ShardInfo {
     const dbPath = this.getShardPath(scope, scopeHash, shardIndex);
     const now = Date.now();
 
@@ -107,7 +107,7 @@ export class ShardManager {
     `);
 
     const result = stmt.run(scope, scopeHash, shardIndex, dbPath, now);
-    
+
     const db = connectionManager.getConnection(dbPath);
     this.initShardDb(db);
 
@@ -176,7 +176,7 @@ export class ShardManager {
     db.run(`CREATE INDEX IF NOT EXISTS idx_is_pinned ON memories(is_pinned)`);
   }
 
-  getWriteShard(scope: 'user' | 'project', scopeHash: string): ShardInfo {
+  getWriteShard(scope: "user" | "project", scopeHash: string): ShardInfo {
     let shard = this.getActiveShard(scope, scopeHash);
 
     if (!shard) {
@@ -233,10 +233,10 @@ export class ShardManager {
   deleteShard(shardId: number): void {
     const stmt = this.metadataDb.prepare(`SELECT db_path FROM shards WHERE id = ?`);
     const row = stmt.get(shardId) as any;
-    
+
     if (row) {
       connectionManager.closeConnection(row.db_path);
-      
+
       try {
         const fs = require("node:fs");
         if (fs.existsSync(row.db_path)) {
@@ -245,10 +245,10 @@ export class ShardManager {
       } catch (error) {
         log("Error deleting shard file", { dbPath: row.db_path, error: String(error) });
       }
-      
+
       const deleteStmt = this.metadataDb.prepare(`DELETE FROM shards WHERE id = ?`);
       deleteStmt.run(shardId);
-      
+
       log("Shard deleted", { shardId, dbPath: row.db_path });
     }
   }

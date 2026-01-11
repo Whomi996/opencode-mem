@@ -36,9 +36,9 @@ export function getGitName(): string | null {
 
 export function getGitRepoUrl(directory: string): string | null {
   try {
-    const url = execSync("git config --get remote.origin.url", { 
+    const url = execSync("git config --get remote.origin.url", {
       encoding: "utf-8",
-      cwd: directory 
+      cwd: directory,
     }).trim();
     return url || null;
   } catch {
@@ -47,14 +47,14 @@ export function getGitRepoUrl(directory: string): string | null {
 }
 
 export function getProjectName(directory: string): string {
-  const parts = directory.split("/").filter(p => p);
+  const parts = directory.split("/").filter((p) => p);
   return parts[parts.length - 1] || directory;
 }
 
 export function getUserTagInfo(): TagInfo {
   const email = getGitEmail();
   const name = getGitName();
-  
+
   if (email) {
     return {
       tag: `${CONFIG.containerTagPrefix}_user_${sha256(email)}`,
@@ -63,7 +63,7 @@ export function getUserTagInfo(): TagInfo {
       userEmail: email,
     };
   }
-  
+
   const fallback = process.env.USER || process.env.USERNAME || "anonymous";
   return {
     tag: `${CONFIG.containerTagPrefix}_user_${sha256(fallback)}`,
@@ -76,7 +76,7 @@ export function getUserTagInfo(): TagInfo {
 export function getProjectTagInfo(directory: string): TagInfo {
   const projectName = getProjectName(directory);
   const gitRepoUrl = getGitRepoUrl(directory);
-  
+
   return {
     tag: `${CONFIG.containerTagPrefix}_project_${sha256(directory)}`,
     displayName: directory,
@@ -86,8 +86,8 @@ export function getProjectTagInfo(directory: string): TagInfo {
   };
 }
 
-export function getTags(directory: string): { 
-  user: TagInfo; 
+export function getTags(directory: string): {
+  user: TagInfo;
   project: TagInfo;
 } {
   return {
@@ -95,4 +95,3 @@ export function getTags(directory: string): {
     project: getProjectTagInfo(directory),
   };
 }
-

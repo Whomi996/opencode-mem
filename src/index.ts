@@ -43,12 +43,12 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const injectedSessions = new Set<string>();
   const autoCaptureService = new AutoCaptureService();
   let webServer: WebServer | null = null;
-  
-  log("Plugin loaded", { 
-    directory, 
-    tags, 
+
+  log("Plugin loaded", {
+    directory,
+    tags,
     configured: isConfigured(),
-    autoCaptureEnabled: autoCaptureService.isEnabled()
+    autoCaptureEnabled: autoCaptureService.isEnabled(),
   });
 
   if (!isConfigured()) {
@@ -60,51 +60,59 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       port: CONFIG.webServerPort,
       host: CONFIG.webServerHost,
       enabled: CONFIG.webServerEnabled,
-    }).then((server) => {
-      webServer = server;
-      const url = webServer.getUrl();
-      
-      if (webServer.isServerOwner()) {
-        log("Web server started (owner)", { url });
-        
-        if (ctx.client?.tui) {
-          ctx.client.tui.showToast({
-            body: {
-              title: "Memory Explorer",
-              message: `Web UI started at ${url}`,
-              variant: "success",
-              duration: 5000,
-            },
-          }).catch(() => {});
+    })
+      .then((server) => {
+        webServer = server;
+        const url = webServer.getUrl();
+
+        if (webServer.isServerOwner()) {
+          log("Web server started (owner)", { url });
+
+          if (ctx.client?.tui) {
+            ctx.client.tui
+              .showToast({
+                body: {
+                  title: "Memory Explorer",
+                  message: `Web UI started at ${url}`,
+                  variant: "success",
+                  duration: 5000,
+                },
+              })
+              .catch(() => {});
+          }
+        } else {
+          log("Web server already running (joined)", { url });
+
+          if (ctx.client?.tui) {
+            ctx.client.tui
+              .showToast({
+                body: {
+                  title: "Memory Explorer",
+                  message: `Web UI available at ${url}`,
+                  variant: "info",
+                  duration: 3000,
+                },
+              })
+              .catch(() => {});
+          }
         }
-      } else {
-        log("Web server already running (joined)", { url });
-        
+      })
+      .catch((error) => {
+        log("Web server failed to start", { error: String(error) });
+
         if (ctx.client?.tui) {
-          ctx.client.tui.showToast({
-            body: {
-              title: "Memory Explorer",
-              message: `Web UI available at ${url}`,
-              variant: "info",
-              duration: 3000,
-            },
-          }).catch(() => {});
+          ctx.client.tui
+            .showToast({
+              body: {
+                title: "Memory Explorer Error",
+                message: `Failed to start: ${String(error)}`,
+                variant: "error",
+                duration: 5000,
+              },
+            })
+            .catch(() => {});
         }
-      }
-    }).catch((error) => {
-      log("Web server failed to start", { error: String(error) });
-      
-      if (ctx.client?.tui) {
-        ctx.client.tui.showToast({
-          body: {
-            title: "Memory Explorer Error",
-            message: `Failed to start: ${String(error)}`,
-            variant: "error",
-            duration: 5000,
-          },
-        }).catch(() => {});
-      }
-    });
+      });
   }
 
   const shutdownHandler = async () => {
@@ -113,9 +121,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     }
   };
 
-  process.on('SIGINT', shutdownHandler);
-  process.on('SIGTERM', shutdownHandler);
-  process.on('exit', shutdownHandler);
+  process.on("SIGINT", shutdownHandler);
+  process.on("SIGTERM", shutdownHandler);
+  process.on("exit", shutdownHandler);
 
   return {
     "chat.message": async (input, output) => {
@@ -155,47 +163,53 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
           if (needsWarmup) {
             if (ctx.client?.tui) {
-              await ctx.client.tui.showToast({
-                body: {
-                  title: "Memory System",
-                  message: "Initializing (first time: 30-60s)...",
-                  variant: "info",
-                  duration: 5000,
-                },
-              }).catch(() => {});
+              await ctx.client.tui
+                .showToast({
+                  body: {
+                    title: "Memory System",
+                    message: "Initializing (first time: 30-60s)...",
+                    variant: "info",
+                    duration: 5000,
+                  },
+                })
+                .catch(() => {});
             }
 
             try {
               await memoryClient.warmup();
 
               if (ctx.client?.tui) {
-                const autoCaptureStatus = autoCaptureService.isEnabled() 
-                  ? "Auto-capture: enabled" 
+                const autoCaptureStatus = autoCaptureService.isEnabled()
+                  ? "Auto-capture: enabled"
                   : autoCaptureService.getDisabledReason() || "Auto-capture: disabled";
-                
-                await ctx.client.tui.showToast({
-                  body: {
-                    title: "Memory System Ready!",
-                    message: autoCaptureStatus,
-                    variant: autoCaptureService.isEnabled() ? "success" : "warning",
-                    duration: 3000,
-                  },
-                }).catch(() => {});
+
+                await ctx.client.tui
+                  .showToast({
+                    body: {
+                      title: "Memory System Ready!",
+                      message: autoCaptureStatus,
+                      variant: autoCaptureService.isEnabled() ? "success" : "warning",
+                      duration: 3000,
+                    },
+                  })
+                  .catch(() => {});
               }
             } catch (warmupError) {
               log("Warmup failed", { error: String(warmupError) });
-              
+
               if (ctx.client?.tui) {
-                await ctx.client.tui.showToast({
-                  body: {
-                    title: "Memory System Error",
-                    message: `Failed to initialize: ${String(warmupError)}`,
-                    variant: "error",
-                    duration: 10000,
-                  },
-                }).catch(() => {});
+                await ctx.client.tui
+                  .showToast({
+                    body: {
+                      title: "Memory System Error",
+                      message: `Failed to initialize: ${String(warmupError)}`,
+                      variant: "error",
+                      duration: 10000,
+                    },
+                  })
+                  .catch(() => {});
               }
-              
+
               return;
             }
           }
@@ -208,7 +222,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
           const profile = profileResult.success ? profileResult : null;
           const userMemories = userMemoriesResult.success ? userMemoriesResult : { results: [] };
-          const projectMemoriesList = projectMemoriesListResult.success ? projectMemoriesListResult : { memories: [] };
+          const projectMemoriesList = projectMemoriesListResult.success
+            ? projectMemoriesListResult
+            : { memories: [] };
 
           const projectMemories = {
             results: (projectMemoriesList.memories || []).map((m: any) => ({
@@ -222,11 +238,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             timing: 0,
           };
 
-          const memoryContext = formatContextForPrompt(
-            profile,
-            userMemories,
-            projectMemories
-          );
+          const memoryContext = formatContextForPrompt(profile, userMemories, projectMemories);
 
           if (memoryContext) {
             const contextPart: Part = {
@@ -241,19 +253,20 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             output.parts.unshift(contextPart);
           }
         }
-
       } catch (error) {
         log("chat.message: ERROR", { error: String(error) });
-        
+
         if (ctx.client?.tui) {
-          await ctx.client.tui.showToast({
-            body: {
-              title: "Memory System Error",
-              message: String(error),
-              variant: "error",
-              duration: 5000,
-            },
-          }).catch(() => {});
+          await ctx.client.tui
+            .showToast({
+              body: {
+                title: "Memory System Error",
+                message: String(error),
+                variant: "error",
+                duration: 5000,
+              },
+            })
+            .catch(() => {});
         }
       }
     },
@@ -264,7 +277,17 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           "Manage and query the local persistent memory system. Use 'search' to find relevant memories, 'add' to store new knowledge, 'profile' to view user profile, 'list' to see recent memories, 'forget' to remove a memory.",
         args: {
           mode: tool.schema
-            .enum(["add", "search", "profile", "list", "forget", "help", "capture-now", "auto-capture-toggle", "auto-capture-stats"])
+            .enum([
+              "add",
+              "search",
+              "profile",
+              "list",
+              "forget",
+              "help",
+              "capture-now",
+              "auto-capture-toggle",
+              "auto-capture-stats",
+            ])
             .optional(),
           content: tool.schema.string().optional(),
           query: tool.schema.string().optional(),
@@ -273,15 +296,18 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           memoryId: tool.schema.string().optional(),
           limit: tool.schema.number().optional(),
         },
-        async execute(args: {
-          mode?: string;
-          content?: string;
-          query?: string;
-          type?: MemoryType;
-          scope?: MemoryScope;
-          memoryId?: string;
-          limit?: number;
-        }, toolCtx: { sessionID: string }) {
+        async execute(
+          args: {
+            mode?: string;
+            content?: string;
+            query?: string;
+            type?: MemoryType;
+            scope?: MemoryScope;
+            memoryId?: string;
+            limit?: number;
+          },
+          toolCtx: { sessionID: string }
+        ) {
           if (!isConfigured()) {
             return JSON.stringify({
               success: false,
@@ -351,7 +377,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                     user: "Cross-project user behaviors, preferences, patterns, requests",
                     project: "Project-specific knowledge, decisions, architecture, context",
                   },
-                  typeGuidance: "Choose appropriate type: preference, architecture, workflow, bug-fix, configuration, pattern, request, context, etc. Be specific and descriptive with categories.",
+                  typeGuidance:
+                    "Choose appropriate type: preference, architecture, workflow, bug-fix, configuration, pattern, request, context, etc. Be specific and descriptive with categories.",
                 });
               }
 
@@ -374,19 +401,15 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 const scope = args.scope || "project";
                 const tagInfo = scope === "user" ? tags.user : tags.project;
 
-                const result = await memoryClient.addMemory(
-                  sanitizedContent,
-                  tagInfo.tag,
-                  { 
-                    type: args.type,
-                    displayName: tagInfo.displayName,
-                    userName: tagInfo.userName,
-                    userEmail: tagInfo.userEmail,
-                    projectPath: tagInfo.projectPath,
-                    projectName: tagInfo.projectName,
-                    gitRepoUrl: tagInfo.gitRepoUrl,
-                  }
-                );
+                const result = await memoryClient.addMemory(sanitizedContent, tagInfo.tag, {
+                  type: args.type,
+                  displayName: tagInfo.displayName,
+                  userName: tagInfo.userName,
+                  userEmail: tagInfo.userEmail,
+                  projectPath: tagInfo.projectPath,
+                  projectName: tagInfo.projectName,
+                  gitRepoUrl: tagInfo.gitRepoUrl,
+                });
 
                 if (!result.success) {
                   return JSON.stringify({
@@ -415,10 +438,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 const scope = args.scope;
 
                 if (scope === "user") {
-                  const result = await memoryClient.searchMemories(
-                    args.query,
-                    tags.user.tag
-                  );
+                  const result = await memoryClient.searchMemories(args.query, tags.user.tag);
                   if (!result.success) {
                     return JSON.stringify({
                       success: false,
@@ -429,10 +449,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 }
 
                 if (scope === "project") {
-                  const result = await memoryClient.searchMemories(
-                    args.query,
-                    tags.project.tag
-                  );
+                  const result = await memoryClient.searchMemories(args.query, tags.project.tag);
                   if (!result.success) {
                     return JSON.stringify({
                       success: false,
@@ -479,10 +496,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               }
 
               case "profile": {
-                const result = await memoryClient.getProfile(
-                  tags.user.tag,
-                  args.query
-                );
+                const result = await memoryClient.getProfile(tags.user.tag, args.query);
 
                 if (!result.success) {
                   return JSON.stringify({
@@ -505,10 +519,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 const limit = args.limit || 20;
                 const tagInfo = scope === "user" ? tags.user : tags.project;
 
-                const result = await memoryClient.listMemories(
-                  tagInfo.tag,
-                  limit
-                );
+                const result = await memoryClient.listMemories(tagInfo.tag, limit);
 
                 if (!result.success) {
                   return JSON.stringify({
@@ -541,9 +552,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
                 const scope = args.scope || "project";
 
-                const result = await memoryClient.deleteMemory(
-                  args.memoryId
-                );
+                const result = await memoryClient.deleteMemory(args.memoryId);
 
                 if (!result.success) {
                   return JSON.stringify({
@@ -634,8 +643,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
         const shouldCapture = autoCaptureService.checkTokenThreshold(sessionID, totalUsed);
 
         if (shouldCapture) {
-          performAutoCapture(ctx, autoCaptureService, sessionID, directory).catch(
-            (err) => log("Auto-capture failed", { error: String(err) })
+          performAutoCapture(ctx, autoCaptureService, sessionID, directory).catch((err) =>
+            log("Auto-capture failed", { error: String(err) })
           );
         }
       }
@@ -648,34 +657,41 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
         if (!isConfigured()) return;
 
         const { cleanupService } = await import("./services/cleanup-service.js");
-        
+
         const shouldRun = await cleanupService.shouldRunCleanup();
         if (!shouldRun) return;
 
-        cleanupService.runCleanup().then((result) => {
-          if (result.deletedCount > 0 && ctx.client?.tui) {
-            ctx.client.tui.showToast({
-              body: {
-                title: "Memory Cleanup",
-                message: `Deleted ${result.deletedCount} old memories (user: ${result.userCount}, project: ${result.projectCount})`,
-                variant: "info",
-                duration: 5000,
-              },
-            }).catch(() => {});
-          }
-        }).catch((err) => {
-          log("Auto-cleanup failed", { error: String(err) });
-          if (ctx.client?.tui) {
-            ctx.client.tui.showToast({
-              body: {
-                title: "Memory Cleanup Error",
-                message: String(err),
-                variant: "error",
-                duration: 5000,
-              },
-            }).catch(() => {});
-          }
-        });
+        cleanupService
+          .runCleanup()
+          .then((result) => {
+            if (result.deletedCount > 0 && ctx.client?.tui) {
+              ctx.client.tui
+                .showToast({
+                  body: {
+                    title: "Memory Cleanup",
+                    message: `Deleted ${result.deletedCount} old memories (user: ${result.userCount}, project: ${result.projectCount})`,
+                    variant: "info",
+                    duration: 5000,
+                  },
+                })
+                .catch(() => {});
+            }
+          })
+          .catch((err) => {
+            log("Auto-cleanup failed", { error: String(err) });
+            if (ctx.client?.tui) {
+              ctx.client.tui
+                .showToast({
+                  body: {
+                    title: "Memory Cleanup Error",
+                    message: String(err),
+                    variant: "error",
+                    duration: 5000,
+                  },
+                })
+                .catch(() => {});
+            }
+          });
       }
     },
   };

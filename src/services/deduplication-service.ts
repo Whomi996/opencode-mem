@@ -39,12 +39,12 @@ export class DeduplicationService {
     this.isRunning = true;
 
     try {
-      log("Deduplication: starting", { 
-        threshold: CONFIG.deduplicationSimilarityThreshold 
+      log("Deduplication: starting", {
+        threshold: CONFIG.deduplicationSimilarityThreshold,
       });
 
-      const userShards = shardManager.getAllShards('user', '');
-      const projectShards = shardManager.getAllShards('project', '');
+      const userShards = shardManager.getAllShards("user", "");
+      const projectShards = shardManager.getAllShards("project", "");
       const allShards = [...userShards, ...projectShards];
 
       let exactDeleted = 0;
@@ -76,16 +76,16 @@ export class DeduplicationService {
                 shardManager.decrementVectorCount(shard.id);
                 exactDeleted++;
               } catch (error) {
-                log("Deduplication: delete error", { 
-                  memoryId: dup.id, 
-                  error: String(error) 
+                log("Deduplication: delete error", {
+                  memoryId: dup.id,
+                  error: String(error),
                 });
               }
             }
           }
         }
 
-        const uniqueMemories = Array.from(contentMap.values()).map(arr => arr[0]);
+        const uniqueMemories = Array.from(contentMap.values()).map((arr) => arr[0]);
 
         for (let i = 0; i < uniqueMemories.length; i++) {
           const mem1 = uniqueMemories[i];
@@ -125,16 +125,15 @@ export class DeduplicationService {
         }
       }
 
-      log("Deduplication: completed", { 
-        exactDeleted, 
-        nearDuplicateGroupsFound: nearDuplicateGroups.length 
+      log("Deduplication: completed", {
+        exactDeleted,
+        nearDuplicateGroupsFound: nearDuplicateGroups.length,
       });
 
       return {
         exactDuplicatesDeleted: exactDeleted,
         nearDuplicateGroups,
       };
-
     } finally {
       this.isRunning = false;
     }

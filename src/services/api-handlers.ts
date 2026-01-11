@@ -51,14 +51,12 @@ function safeToISOString(timestamp: any): string {
     if (timestamp === null || timestamp === undefined) {
       return new Date().toISOString();
     }
-    const numValue = typeof timestamp === 'bigint' 
-      ? Number(timestamp) 
-      : Number(timestamp);
-    
+    const numValue = typeof timestamp === "bigint" ? Number(timestamp) : Number(timestamp);
+
     if (isNaN(numValue) || numValue < 0) {
       return new Date().toISOString();
     }
-    
+
     return new Date(numValue).toISOString();
   } catch {
     return new Date().toISOString();
@@ -66,7 +64,7 @@ function safeToISOString(timestamp: any): string {
 }
 
 function safeJSONParse(jsonString: any): any {
-  if (!jsonString || typeof jsonString !== 'string') {
+  if (!jsonString || typeof jsonString !== "string") {
     return undefined;
   }
   try {
@@ -76,22 +74,24 @@ function safeJSONParse(jsonString: any): any {
   }
 }
 
-function extractScopeFromTag(tag: string): { scope: 'user' | 'project', hash: string } {
-  const parts = tag.split('_');
+function extractScopeFromTag(tag: string): { scope: "user" | "project"; hash: string } {
+  const parts = tag.split("_");
   if (parts.length >= 3) {
-    const scope = parts[1] as 'user' | 'project';
-    const hash = parts.slice(2).join('_');
+    const scope = parts[1] as "user" | "project";
+    const hash = parts.slice(2).join("_");
     return { scope, hash };
   }
-  return { scope: 'user', hash: tag };
+  return { scope: "user", hash: tag };
 }
 
-export async function handleListTags(): Promise<ApiResponse<{ user: TagInfo[]; project: TagInfo[] }>> {
+export async function handleListTags(): Promise<
+  ApiResponse<{ user: TagInfo[]; project: TagInfo[] }>
+> {
   try {
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     const tagsMap = new Map<string, TagInfo>();
@@ -128,7 +128,7 @@ export async function handleListTags(): Promise<ApiResponse<{ user: TagInfo[]; p
 
     return {
       success: true,
-      data: { user: userTags, project: projectTags }
+      data: { user: userTags, project: projectTags },
     };
   } catch (error) {
     log("handleListTags: error", { error: String(error) });
@@ -156,8 +156,8 @@ export async function handleListMemories(
         allResults.push(...memories);
       }
     } else {
-      const userShards = shardManager.getAllShards('user', '');
-      const projectShards = shardManager.getAllShards('project', '');
+      const userShards = shardManager.getAllShards("user", "");
+      const projectShards = shardManager.getAllShards("project", "");
       const allShards = [...userShards, ...projectShards];
 
       for (const shard of allShards) {
@@ -167,14 +167,14 @@ export async function handleListMemories(
       }
     }
 
-    const sortedResults = allResults.sort((a: any, b: any) => 
-      Number(b.created_at) - Number(a.created_at)
+    const sortedResults = allResults.sort(
+      (a: any, b: any) => Number(b.created_at) - Number(a.created_at)
     );
-    
+
     const total = sortedResults.length;
     const totalPages = Math.ceil(total / pageSize);
     const offset = (page - 1) * pageSize;
-    
+
     const paginatedResults = sortedResults.slice(offset, offset + pageSize);
 
     const memories: Memory[] = paginatedResults.map((r: any) => ({
@@ -201,8 +201,8 @@ export async function handleListMemories(
         total,
         page,
         pageSize,
-        totalPages
-      }
+        totalPages,
+      },
     };
   } catch (error) {
     log("handleListMemories: error", { error: String(error) });
@@ -271,8 +271,8 @@ export async function handleDeleteMemory(id: string): Promise<ApiResponse<void>>
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     for (const shard of allShards) {
@@ -325,8 +325,8 @@ export async function handleUpdateMemory(
 
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     let foundShard = null;
@@ -410,8 +410,8 @@ export async function handleSearch(
         }
       }
     } else {
-      const userShards = shardManager.getAllShards('user', '');
-      const projectShards = shardManager.getAllShards('project', '');
+      const userShards = shardManager.getAllShards("user", "");
+      const projectShards = shardManager.getAllShards("project", "");
       const allShards = [...userShards, ...projectShards];
 
       const uniqueTags = new Set<string>();
@@ -440,14 +440,12 @@ export async function handleSearch(
       }
     }
 
-    const sortedResults = allResults.sort((a: any, b: any) => 
-      b.similarity - a.similarity
-    );
+    const sortedResults = allResults.sort((a: any, b: any) => b.similarity - a.similarity);
 
     const total = sortedResults.length;
     const totalPages = Math.ceil(total / pageSize);
     const offset = (page - 1) * pageSize;
-    
+
     const paginatedResults = sortedResults.slice(offset, offset + pageSize);
 
     const memories = paginatedResults.map((r: any) => ({
@@ -475,8 +473,8 @@ export async function handleSearch(
         total,
         page,
         pageSize,
-        totalPages
-      }
+        totalPages,
+      },
     };
   } catch (error) {
     log("handleSearch: error", { error: String(error) });
@@ -484,16 +482,18 @@ export async function handleSearch(
   }
 }
 
-export async function handleStats(): Promise<ApiResponse<{
-  total: number;
-  byScope: { user: number; project: number };
-  byType: Record<string, number>;
-}>> {
+export async function handleStats(): Promise<
+  ApiResponse<{
+    total: number;
+    byScope: { user: number; project: number };
+    byType: Record<string, number>;
+  }>
+> {
   try {
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     let userCount = 0;
@@ -522,8 +522,8 @@ export async function handleStats(): Promise<ApiResponse<{
       data: {
         total: userCount + projectCount,
         byScope: { user: userCount, project: projectCount },
-        byType: typeCount
-      }
+        byType: typeCount,
+      },
     };
   } catch (error) {
     log("handleStats: error", { error: String(error) });
@@ -537,8 +537,8 @@ export async function handlePinMemory(id: string): Promise<ApiResponse<void>> {
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     for (const shard of allShards) {
@@ -564,8 +564,8 @@ export async function handleUnpinMemory(id: string): Promise<ApiResponse<void>> 
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards('user', '');
-    const projectShards = shardManager.getAllShards('project', '');
+    const userShards = shardManager.getAllShards("user", "");
+    const projectShards = shardManager.getAllShards("project", "");
     const allShards = [...userShards, ...projectShards];
 
     for (const shard of allShards) {
@@ -585,11 +585,13 @@ export async function handleUnpinMemory(id: string): Promise<ApiResponse<void>> 
   }
 }
 
-export async function handleRunCleanup(): Promise<ApiResponse<{
-  deletedCount: number;
-  userCount: number;
-  projectCount: number;
-}>> {
+export async function handleRunCleanup(): Promise<
+  ApiResponse<{
+    deletedCount: number;
+    userCount: number;
+    projectCount: number;
+  }>
+> {
   try {
     const { cleanupService } = await import("./cleanup-service.js");
     const result = await cleanupService.runCleanup();
@@ -600,10 +602,12 @@ export async function handleRunCleanup(): Promise<ApiResponse<{
   }
 }
 
-export async function handleRunDeduplication(): Promise<ApiResponse<{
-  exactDuplicatesDeleted: number;
-  nearDuplicateGroups: any[];
-}>> {
+export async function handleRunDeduplication(): Promise<
+  ApiResponse<{
+    exactDuplicatesDeleted: number;
+    nearDuplicateGroups: any[];
+  }>
+> {
   try {
     const { deduplicationService } = await import("./deduplication-service.js");
     const result = await deduplicationService.detectAndRemoveDuplicates();
@@ -614,12 +618,14 @@ export async function handleRunDeduplication(): Promise<ApiResponse<{
   }
 }
 
-export async function handleDetectMigration(): Promise<ApiResponse<{
-  needsMigration: boolean;
-  configDimensions: number;
-  configModel: string;
-  shardMismatches: any[];
-}>> {
+export async function handleDetectMigration(): Promise<
+  ApiResponse<{
+    needsMigration: boolean;
+    configDimensions: number;
+    configModel: string;
+    shardMismatches: any[];
+  }>
+> {
   try {
     const { migrationService } = await import("./migration-service.js");
     const result = await migrationService.detectDimensionMismatch();
@@ -630,14 +636,16 @@ export async function handleDetectMigration(): Promise<ApiResponse<{
   }
 }
 
-export async function handleRunMigration(strategy: "fresh-start" | "re-embed"): Promise<ApiResponse<{
-  success: boolean;
-  strategy: string;
-  deletedShards: number;
-  reEmbeddedMemories: number;
-  duration: number;
-  error?: string;
-}>> {
+export async function handleRunMigration(strategy: "fresh-start" | "re-embed"): Promise<
+  ApiResponse<{
+    success: boolean;
+    strategy: string;
+    deletedShards: number;
+    reEmbeddedMemories: number;
+    duration: number;
+    error?: string;
+  }>
+> {
   try {
     const { migrationService } = await import("./migration-service.js");
     const result = await migrationService.migrateToNewModel(strategy);

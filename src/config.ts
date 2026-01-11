@@ -69,7 +69,18 @@ const DEFAULT_KEYWORD_PATTERNS = [
   "always\\s+remember",
 ];
 
-const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey">> & { embeddingApiUrl?: string; embeddingApiKey?: string; memoryModel?: string; memoryApiUrl?: string; memoryApiKey?: string } = {
+const DEFAULTS: Required<
+  Omit<
+    OpenCodeMemConfig,
+    "embeddingApiUrl" | "embeddingApiKey" | "memoryModel" | "memoryApiUrl" | "memoryApiKey"
+  >
+> & {
+  embeddingApiUrl?: string;
+  embeddingApiKey?: string;
+  memoryModel?: string;
+  memoryApiUrl?: string;
+  memoryApiKey?: string;
+} = {
   storagePath: join(DATA_DIR, "data"),
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
@@ -93,7 +104,7 @@ const DEFAULTS: Required<Omit<OpenCodeMemConfig, "embeddingApiUrl" | "embeddingA
   autoCleanupEnabled: true,
   autoCleanupRetentionDays: 30,
   deduplicationEnabled: true,
-  deduplicationSimilarityThreshold: 0.90,
+  deduplicationSimilarityThreshold: 0.9,
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -122,8 +133,7 @@ function loadConfig(): OpenCodeMemConfig {
         const content = readFileSync(path, "utf-8");
         const json = stripJsoncComments(content);
         return JSON.parse(json) as OpenCodeMemConfig;
-      } catch {
-      }
+      } catch {}
     }
   }
   return {};
@@ -230,14 +240,13 @@ const CONFIG_TEMPLATE = `{
 
 function ensureConfigExists(): void {
   const configPath = join(CONFIG_DIR, "opencode-mem.jsonc");
-  
+
   if (!existsSync(configPath)) {
     try {
       writeFileSync(configPath, CONFIG_TEMPLATE, "utf-8");
       console.log(`\n✓ Created config template: ${configPath}`);
       console.log("  Edit this file to customize opencode-mem settings.\n");
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -267,7 +276,9 @@ function getEmbeddingDimensions(model: string): number {
 export const CONFIG = {
   storagePath: expandPath(fileConfig.storagePath ?? DEFAULTS.storagePath),
   embeddingModel: fileConfig.embeddingModel ?? DEFAULTS.embeddingModel,
-  embeddingDimensions: fileConfig.embeddingDimensions ?? getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
+  embeddingDimensions:
+    fileConfig.embeddingDimensions ??
+    getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
   embeddingApiUrl: fileConfig.embeddingApiUrl,
   embeddingApiKey: fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY,
   similarityThreshold: fileConfig.similarityThreshold ?? DEFAULTS.similarityThreshold,
@@ -281,11 +292,14 @@ export const CONFIG = {
     ...(fileConfig.keywordPatterns ?? []).filter(isValidRegex),
   ],
   autoCaptureEnabled: fileConfig.autoCaptureEnabled ?? DEFAULTS.autoCaptureEnabled,
-  autoCaptureTokenThreshold: fileConfig.autoCaptureTokenThreshold ?? DEFAULTS.autoCaptureTokenThreshold,
+  autoCaptureTokenThreshold:
+    fileConfig.autoCaptureTokenThreshold ?? DEFAULTS.autoCaptureTokenThreshold,
   autoCaptureMinTokens: fileConfig.autoCaptureMinTokens ?? DEFAULTS.autoCaptureMinTokens,
   autoCaptureMaxMemories: fileConfig.autoCaptureMaxMemories ?? DEFAULTS.autoCaptureMaxMemories,
-  autoCaptureSummaryMaxLength: fileConfig.autoCaptureSummaryMaxLength ?? DEFAULTS.autoCaptureSummaryMaxLength,
-  autoCaptureContextWindow: fileConfig.autoCaptureContextWindow ?? DEFAULTS.autoCaptureContextWindow,
+  autoCaptureSummaryMaxLength:
+    fileConfig.autoCaptureSummaryMaxLength ?? DEFAULTS.autoCaptureSummaryMaxLength,
+  autoCaptureContextWindow:
+    fileConfig.autoCaptureContextWindow ?? DEFAULTS.autoCaptureContextWindow,
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
   memoryApiKey: fileConfig.memoryApiKey,
@@ -294,9 +308,11 @@ export const CONFIG = {
   webServerHost: fileConfig.webServerHost ?? DEFAULTS.webServerHost,
   maxVectorsPerShard: fileConfig.maxVectorsPerShard ?? DEFAULTS.maxVectorsPerShard,
   autoCleanupEnabled: fileConfig.autoCleanupEnabled ?? DEFAULTS.autoCleanupEnabled,
-  autoCleanupRetentionDays: fileConfig.autoCleanupRetentionDays ?? DEFAULTS.autoCleanupRetentionDays,
+  autoCleanupRetentionDays:
+    fileConfig.autoCleanupRetentionDays ?? DEFAULTS.autoCleanupRetentionDays,
   deduplicationEnabled: fileConfig.deduplicationEnabled ?? DEFAULTS.deduplicationEnabled,
-  deduplicationSimilarityThreshold: fileConfig.deduplicationSimilarityThreshold ?? DEFAULTS.deduplicationSimilarityThreshold,
+  deduplicationSimilarityThreshold:
+    fileConfig.deduplicationSimilarityThreshold ?? DEFAULTS.deduplicationSimilarityThreshold,
 };
 
 export function isConfigured(): boolean {
