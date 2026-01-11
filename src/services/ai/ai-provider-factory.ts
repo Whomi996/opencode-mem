@@ -49,6 +49,12 @@ export class AIProviderFactory {
     return this.sessionStore.cleanupExpiredSessions();
   }
 
+  static checkpointSessionStore(): void {
+    if (this.sessionStore) {
+      this.sessionStore.checkpoint();
+    }
+  }
+
   static closeSessionStore(): void {
     if (this.sessionStore) {
       this.sessionStore.close();

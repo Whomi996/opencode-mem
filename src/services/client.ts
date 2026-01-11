@@ -66,7 +66,6 @@ export class LocalMemoryClient {
     this.initPromise = (async () => {
       try {
         this.isInitialized = true;
-        log("SQLite memory client initialized");
       } catch (error) {
         this.initPromise = null;
         log("SQLite initialization failed", { error: String(error) });
@@ -98,8 +97,11 @@ export class LocalMemoryClient {
     };
   }
 
+  close(): void {
+    connectionManager.closeAll();
+  }
+
   async searchMemories(query: string, containerTag: string) {
-    log("searchMemories: start", { containerTag });
     try {
       await this.initialize();
 
@@ -120,7 +122,6 @@ export class LocalMemoryClient {
         CONFIG.similarityThreshold
       );
 
-      log("searchMemories: success", { count: results.length });
       return { success: true as const, results, total: results.length, timing: 0 };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -130,7 +131,6 @@ export class LocalMemoryClient {
   }
 
   async getProfile(containerTag: string, query?: string) {
-    log("getProfile: start", { containerTag });
     try {
       await this.initialize();
 
@@ -163,7 +163,6 @@ export class LocalMemoryClient {
         dynamic: dynamicFacts.slice(0, CONFIG.maxProfileItems),
       };
 
-      log("getProfile: success", { hasProfile: true });
       return { success: true as const, profile };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -191,7 +190,6 @@ export class LocalMemoryClient {
       [key: string]: unknown;
     }
   ) {
-    log("addMemory: start", { containerTag, contentLength: content.length });
     try {
       await this.initialize();
 
@@ -235,7 +233,6 @@ export class LocalMemoryClient {
       vectorSearch.insertVector(db, record);
       shardManager.incrementVectorCount(shard.id);
 
-      log("addMemory: success", { id, shardId: shard.id });
       return { success: true as const, id };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -245,7 +242,6 @@ export class LocalMemoryClient {
   }
 
   async deleteMemory(memoryId: string) {
-    log("deleteMemory: start", { memoryId });
     try {
       await this.initialize();
 
@@ -259,7 +255,6 @@ export class LocalMemoryClient {
         if (memory) {
           vectorSearch.deleteVector(db, memoryId);
           shardManager.decrementVectorCount(shard.id);
-          log("deleteMemory: success", { memoryId, shardId: shard.id });
           return { success: true };
         }
       }
@@ -274,7 +269,6 @@ export class LocalMemoryClient {
   }
 
   async listMemories(containerTag: string, limit = 20) {
-    log("listMemories: start", { containerTag, limit });
     try {
       await this.initialize();
 
@@ -313,7 +307,6 @@ export class LocalMemoryClient {
         gitRepoUrl: r.git_repo_url,
       }));
 
-      log("listMemories: success", { count: memories.length });
       return {
         success: true as const,
         memories,

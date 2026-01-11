@@ -383,15 +383,11 @@ ${conversationBody}
       })
       .catch(() => {});
 
-    log("Auto-capture: success", {
-      sessionID,
-      userCount,
-      projectCount,
-      total: results.length,
-    });
-
     buffer.lastCapturedMessageIndex = allMessages.length - 1;
     service.clearBuffer(sessionID);
+
+    const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
+    AIProviderFactory.checkpointSessionStore();
   } catch (error) {
     log("Auto-capture error", { sessionID, error: String(error) });
 
@@ -446,12 +442,6 @@ async function summarizeWithAI(
   if (!result.success) {
     throw new Error(result.error || "Tool call failed");
   }
-
-  log("Auto-capture: AI execution completed", {
-    sessionID,
-    provider: provider.getProviderName(),
-    iterations: result.iterations,
-  });
 
   return result.data;
 }

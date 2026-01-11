@@ -64,14 +64,12 @@ export class WebServer {
 
           if (response.type === "started") {
             this.isOwner = true;
-            log("Web server started (owner)", { url: response.url });
             resolve();
           } else if (response.type === "error") {
             const errorMsg = response.error || "Unknown error";
 
             if (errorMsg.includes("EADDRINUSE") || errorMsg.includes("address already in use")) {
               this.isOwner = false;
-              log("Web server already running (port in use)");
               resolve();
             } else {
               log("Web server worker error", { error: errorMsg });
@@ -107,7 +105,6 @@ export class WebServer {
 
   async stop(): Promise<void> {
     if (!this.isOwner || !this.worker) {
-      log("Web server stop skipped (not owner or no worker)");
       return;
     }
 
@@ -117,7 +114,6 @@ export class WebServer {
           this.worker.terminate();
           this.worker = null;
         }
-        log("Web server stopped (timeout, forced termination)");
         resolve();
       }, 5000);
 
@@ -130,7 +126,6 @@ export class WebServer {
             this.worker.terminate();
             this.worker = null;
           }
-          log("Web server stopped (owner exiting)");
           resolve();
         }
       };

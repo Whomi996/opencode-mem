@@ -8,6 +8,7 @@ import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
 import { AutoCaptureService, performAutoCapture } from "./services/auto-capture.js";
 import { startWebServer, WebServer } from "./services/web-server.js";
+import { AIProviderFactory } from "./services/ai/ai-provider-factory.js";
 
 import { isConfigured, CONFIG } from "./config.js";
 import { log } from "./services/logger.js";
@@ -44,13 +45,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const autoCaptureService = new AutoCaptureService();
   let webServer: WebServer | null = null;
 
-  log("Plugin loaded", {
-    directory,
-    tags,
-    configured: isConfigured(),
-    autoCaptureEnabled: autoCaptureService.isEnabled(),
-  });
-
   if (!isConfigured()) {
     log("Plugin disabled - memory system not configured");
   }
@@ -66,8 +60,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
         const url = webServer.getUrl();
 
         if (webServer.isServerOwner()) {
-          log("Web server started (owner)", { url });
-
           if (ctx.client?.tui) {
             ctx.client.tui
               .showToast({
@@ -81,8 +73,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               .catch(() => {});
           }
         } else {
-          log("Web server already running (joined)", { url });
-
           if (ctx.client?.tui) {
             ctx.client.tui
               .showToast({
@@ -119,11 +109,13 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     if (webServer) {
       await webServer.stop();
     }
+    
+    AIProviderFactory.closeSessionStore();
+    memoryClient.close();
   };
 
   process.on("SIGINT", shutdownHandler);
   process.on("SIGTERM", shutdownHandler);
-  process.on("exit", shutdownHandler);
 
   return {
     "chat.message": async (input, output) => {

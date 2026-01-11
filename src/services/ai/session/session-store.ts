@@ -128,7 +128,12 @@ export class SessionStore {
     this.db.run(`DELETE FROM ai_sessions WHERE session_id = ? AND provider = ?`, [sessionId, provider]);
   }
 
+  checkpoint(): void {
+    this.db.run("PRAGMA wal_checkpoint(PASSIVE)");
+  }
+
   close(): void {
+    this.db.run("PRAGMA wal_checkpoint(TRUNCATE)");
     this.db.close();
   }
 

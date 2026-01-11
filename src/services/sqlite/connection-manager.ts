@@ -30,7 +30,6 @@ export class ConnectionManager {
     this.initDatabase(db);
     this.connections.set(dbPath, db);
 
-    log("SQLite connection opened", { path: dbPath });
     return db;
   }
 
@@ -39,14 +38,13 @@ export class ConnectionManager {
     if (db) {
       db.close();
       this.connections.delete(dbPath);
-      log("SQLite connection closed", { path: dbPath });
     }
   }
 
   closeAll(): void {
     for (const [path, db] of this.connections) {
+      db.run("PRAGMA wal_checkpoint(TRUNCATE)");
       db.close();
-      log("SQLite connection closed", { path });
     }
     this.connections.clear();
   }
