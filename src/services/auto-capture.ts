@@ -100,16 +100,16 @@ export async function performAutoCapture(
   } catch (error) {
     log("Auto-capture error", { sessionID, error: String(error) });
 
-      await ctx.client?.tui
-        .showToast({
-          body: {
-            title: "Auto-Capture Failed",
-            message: String(error),
-            variant: "error",
-            duration: 5000,
-          },
-        })
-        .catch(() => {});
+    await ctx.client?.tui
+      .showToast({
+        body: {
+          title: "Auto-Capture Failed",
+          message: String(error),
+          variant: "error",
+          duration: 5000,
+        },
+      })
+      .catch(() => {});
   }
 }
 
@@ -231,7 +231,11 @@ function buildMarkdownContext(
   return sections.join("\n");
 }
 
-async function generateSummary(ctx: PluginInput, context: string, sessionID: string): Promise<{summary: string; type: string} | null> {
+async function generateSummary(
+  ctx: PluginInput,
+  context: string,
+  sessionID: string
+): Promise<{ summary: string; type: string } | null> {
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl || !CONFIG.memoryApiKey) {
     throw new Error("External API not configured for auto-capture");
   }
@@ -311,6 +315,6 @@ Analyze this conversation. If it contains technical work (code, bugs, features, 
 
   return {
     summary: result.data.summary,
-    type: result.data.type
+    type: result.data.type,
   };
 }

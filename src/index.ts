@@ -140,12 +140,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
         if (!userMessage.trim()) return;
 
-        userPromptManager.savePrompt(
-          input.sessionID,
-          output.message.id,
-          directory,
-          userMessage
-        );
+        userPromptManager.savePrompt(input.sessionID, output.message.id, directory, userMessage);
 
         if (detectMemoryKeyword(userMessage)) {
           const nudgePart: Part = {
@@ -184,9 +179,13 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               await memoryClient.warmup();
 
               if (ctx.client?.tui) {
-                const autoCaptureStatus = CONFIG.autoCaptureEnabled && CONFIG.memoryModel && CONFIG.memoryApiUrl && CONFIG.memoryApiKey
-                  ? "Auto-capture: enabled"
-                  : "Auto-capture: disabled";
+                const autoCaptureStatus =
+                  CONFIG.autoCaptureEnabled &&
+                  CONFIG.memoryModel &&
+                  CONFIG.memoryApiUrl &&
+                  CONFIG.memoryApiKey
+                    ? "Auto-capture: enabled"
+                    : "Auto-capture: disabled";
 
                 await ctx.client.tui
                   .showToast({
@@ -282,15 +281,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           "Manage and query the local persistent memory system. Use 'search' to find relevant memories, 'add' to store new knowledge, 'profile' to view user profile, 'list' to see recent memories, 'forget' to remove a memory.",
         args: {
           mode: tool.schema
-            .enum([
-              "add",
-              "search",
-              "profile",
-              "list",
-              "forget",
-              "help",
-              "capture-now",
-            ])
+            .enum(["add", "search", "profile", "list", "forget", "help", "capture-now"])
             .optional(),
           content: tool.schema.string().optional(),
           query: tool.schema.string().optional(),

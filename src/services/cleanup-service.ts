@@ -70,10 +70,14 @@ export class CleanupService {
       for (const shard of allShards) {
         const db = connectionManager.getConnection(shard.dbPath);
 
-        const oldMemories = db.prepare(`
+        const oldMemories = db
+          .prepare(
+            `
           SELECT id, container_tag, is_pinned FROM memories 
           WHERE updated_at < ?
-        `).all(cutoffTime) as any[];
+        `
+          )
+          .all(cutoffTime) as any[];
 
         for (const memory of oldMemories) {
           try {

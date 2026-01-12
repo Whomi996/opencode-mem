@@ -189,9 +189,7 @@ function renderMemoryCard(memory) {
 
   const createdDate = formatDate(memory.createdAt);
   const updatedDate =
-    memory.updatedAt && memory.updatedAt !== memory.createdAt
-      ? formatDate(memory.updatedAt)
-      : null;
+    memory.updatedAt && memory.updatedAt !== memory.createdAt ? formatDate(memory.updatedAt) : null;
 
   const dateInfo = updatedDate
     ? `<span>Created: ${createdDate}</span><span>Updated: ${updatedDate}</span>`
@@ -241,7 +239,9 @@ function handleCheckboxChange(e) {
 }
 
 function updateCardSelection(id, selected) {
-  const card = document.querySelector(`.memory-card[data-id="${id}"], .prompt-card[data-id="${id}"]`);
+  const card = document.querySelector(
+    `.memory-card[data-id="${id}"], .prompt-card[data-id="${id}"]`
+  );
   if (card) {
     if (selected) {
       card.classList.add("selected");
@@ -338,9 +338,7 @@ async function addMemory(e) {
 }
 
 async function deleteMemoryWithLink(id, isLinked) {
-  const message = isLinked
-    ? "Delete this memory AND its linked prompt?"
-    : "Delete this memory?";
+  const message = isLinked ? "Delete this memory AND its linked prompt?" : "Delete this memory?";
 
   if (!confirm(message)) return;
 
@@ -349,9 +347,7 @@ async function deleteMemoryWithLink(id, isLinked) {
   });
 
   if (result.success) {
-    const msg = result.data?.deletedPrompt
-      ? "Memory and linked prompt deleted"
-      : "Memory deleted";
+    const msg = result.data?.deletedPrompt ? "Memory and linked prompt deleted" : "Memory deleted";
     showToast(msg, "success");
 
     state.selectedMemories.delete(id);
@@ -374,9 +370,7 @@ async function deletePromptWithLink(id, isLinked) {
   });
 
   if (result.success) {
-    const msg = result.data?.deletedMemory
-      ? "Prompt and linked memory deleted"
-      : "Prompt deleted";
+    const msg = result.data?.deletedMemory ? "Prompt and linked memory deleted" : "Prompt deleted";
     showToast(msg, "success");
 
     state.selectedMemories.delete(id);
@@ -428,7 +422,9 @@ async function bulkDelete() {
 function deselectAll() {
   state.selectedMemories.clear();
   document.querySelectorAll(".memory-checkbox").forEach((cb) => (cb.checked = false));
-  document.querySelectorAll(".memory-card, .prompt-card").forEach((card) => card.classList.remove("selected"));
+  document
+    .querySelectorAll(".memory-card, .prompt-card")
+    .forEach((card) => card.classList.remove("selected"));
   updateBulkActions();
 }
 

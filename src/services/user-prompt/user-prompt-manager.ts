@@ -44,10 +44,18 @@ export class UserPromptManager {
 
     this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_session ON user_prompts(session_id)");
     this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_captured ON user_prompts(captured)");
-    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_created ON user_prompts(created_at DESC)");
-    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_project ON user_prompts(project_path)");
-    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_linked ON user_prompts(linked_memory_id)");
-    this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_user_learning ON user_prompts(user_learning_captured)");
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_user_prompts_created ON user_prompts(created_at DESC)"
+    );
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_user_prompts_project ON user_prompts(project_path)"
+    );
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_user_prompts_linked ON user_prompts(linked_memory_id)"
+    );
+    this.db.run(
+      "CREATE INDEX IF NOT EXISTS idx_user_prompts_user_learning ON user_prompts(user_learning_captured)"
+    );
   }
 
   savePrompt(sessionId: string, messageId: string, projectPath: string, content: string): string {
@@ -109,12 +117,16 @@ export class UserPromptManager {
     if (promptIds.length === 0) return;
 
     const placeholders = promptIds.map(() => "?").join(",");
-    const stmt = this.db.prepare(`UPDATE user_prompts SET captured = 1 WHERE id IN (${placeholders})`);
+    const stmt = this.db.prepare(
+      `UPDATE user_prompts SET captured = 1 WHERE id IN (${placeholders})`
+    );
     stmt.run(...promptIds);
   }
 
   countUnanalyzedForUserLearning(): number {
-    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM user_prompts WHERE user_learning_captured = 0`);
+    const stmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM user_prompts WHERE user_learning_captured = 0`
+    );
     const row = stmt.get() as any;
     return row?.count || 0;
   }
@@ -140,7 +152,9 @@ export class UserPromptManager {
     if (promptIds.length === 0) return;
 
     const placeholders = promptIds.map(() => "?").join(",");
-    const stmt = this.db.prepare(`UPDATE user_prompts SET user_learning_captured = 1 WHERE id IN (${placeholders})`);
+    const stmt = this.db.prepare(
+      `UPDATE user_prompts SET user_learning_captured = 1 WHERE id IN (${placeholders})`
+    );
     stmt.run(...promptIds);
   }
 

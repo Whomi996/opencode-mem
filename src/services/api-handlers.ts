@@ -164,9 +164,7 @@ export async function handleListMemories(
       for (const shard of shards) {
         const db = connectionManager.getConnection(shard.dbPath);
         const memories = vectorSearch.getAllMemories(db);
-        allMemories.push(
-          ...memories.filter((m: any) => m.container_tag?.includes(`_${scope}_`))
-        );
+        allMemories.push(...memories.filter((m: any) => m.container_tag?.includes(`_${scope}_`)));
       }
     } else {
       const userShards = shardManager.getAllShards("user", "");
