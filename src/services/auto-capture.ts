@@ -61,14 +61,15 @@ export async function performAutoCapture(
 
     const context = buildMarkdownContext(prompt.content, textResponses, toolCalls, latestMemory);
 
-    const summary = await generateSummary(ctx, context, sessionID);
+    const summaryResult = await generateSummary(ctx, context, sessionID);
 
-    if (!summary) {
-      log("Auto-capture: no summary generated", { sessionID });
+    if (!summaryResult || summaryResult.type === "skip") {
+      log("Auto-capture: skipped non-technical conversation", { sessionID });
+      userPromptManager.deletePrompt(prompt.id);
       return;
     }
 
-    const result = await memoryClient.addMemory(summary, tags.project.tag, {
+    const result = await memoryClient.addMemory(summaryResult.summary, tags.project.tag, {
       source: "auto-capture" as any,
       sessionID,
       promptId: prompt.id,
@@ -196,17 +197,27 @@ function buildMarkdownContext(
   const sections: string[] = [];
 
   if (latestMemory) {
-    sections.push(`## Previous Memory Context\n${latestMemory}\n`);
+    sections.push(`## Previous Memory Context`);
+    sections.push(`---`);
+    sections.push(latestMemory);
+    sections.push(`---\n`);
   }
 
-  sections.push(`## User Request\n${userPrompt}\n`);
+  sections.push(`## User Request`);
+  sections.push(`---`);
+  sections.push(userPrompt);
+  sections.push(`---\n`);
 
   if (textResponses.length > 0) {
-    sections.push(`## AI Response\n\n${textResponses.join("\n\n")}\n`);
+    sections.push(`## AI Response`);
+    sections.push(`---`);
+    sections.push(textResponses.join("\n\n"));
+    sections.push(`---\n`);
   }
 
   if (toolCalls.length > 0) {
-    sections.push(`### Tools Used`);
+    sections.push(`## Tools Used`);
+    sections.push(`---`);
     for (const tool of toolCalls) {
       if (tool.input) {
         sections.push(`- ${tool.name}(${tool.input})`);
@@ -214,13 +225,13 @@ function buildMarkdownContext(
         sections.push(`- ${tool.name}`);
       }
     }
-    sections.push("");
+    sections.push(`---\n`);
   }
 
   return sections.join("\n");
 }
 
-async function generateSummary(ctx: PluginInput, context: string, sessionID: string): Promise<string> {
+async function generateSummary(ctx: PluginInput, context: string, sessionID: string): Promise<{summary: string; type: string} | null> {
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl || !CONFIG.memoryApiKey) {
     throw new Error("External API not configured for auto-capture");
   }
@@ -237,32 +248,37 @@ async function generateSummary(ctx: PluginInput, context: string, sessionID: str
 
   const provider = AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
 
-  const systemPrompt = `You are a professional conversation summarizer for a coding assistant.
+  const systemPrompt = `You are a technical memory recorder for a software development project.
 
-Your task is to analyze the conversation and save it as a memory using the save_memory tool.
+RULES:
+1. ONLY capture technical work (code, bugs, features, architecture, config)
+2. SKIP non-technical by returning type="skip"
+3. NO meta-commentary or behavior analysis
+4. Include specific file names, functions, technical details
 
-The conversation may include a "Previous Memory Context" section showing the most recent memory from this project. Use this context to understand continuity and avoid redundancy.
-
-The summary MUST follow this exact markdown structure:
-
+FORMAT:
 ## Request
-[What the user asked - 2-3 sentences maximum]
+[1-2 sentences: what was requested]
 
 ## Outcome
-[What was accomplished and the result - 2-3 sentences maximum]
+[1-2 sentences: what was done, include files/functions]
 
-Requirements:
-- Use professional technical language
-- Be concise and factual
-- NO emojis or decorative elements
-- Focus on technical details and results
-- Consider previous context to maintain continuity
+SKIP if: greetings, casual chat, no code/decisions made
+CAPTURE if: code changed, bug fixed, feature added, decision made
 
-Use the save_memory tool to save the summary.`;
+EXAMPLES:
+Technical → type="feature":
+## Request
+Fix function returning null.
+## Outcome
+Changed searchMemories() to listMemories() in auto-capture.ts:166.
+
+Non-technical → type="skip", summary="":
+User greeted, AI introduced capabilities.`;
 
   const userPrompt = `${context}
 
-Analyze this conversation and create a professional summary following the exact markdown template provided. Use the save_memory tool to save it.`;
+Analyze this conversation. If it contains technical work (code, bugs, features, decisions), create a concise summary. If it's non-technical (greetings, casual chat, incomplete requests), return type="skip" with empty summary.`;
 
   const toolSchema = {
     type: "function" as const,
@@ -279,7 +295,7 @@ Analyze this conversation and create a professional summary following the exact 
           type: {
             type: "string",
             description:
-              "Type of memory (e.g., feature, bug-fix, refactor, analysis, configuration, etc)",
+              "Type of memory: 'skip' for non-technical conversations, or technical type (feature, bug-fix, refactor, analysis, configuration, discussion, other)",
           },
         },
         required: ["summary", "type"],
@@ -293,5 +309,8 @@ Analyze this conversation and create a professional summary following the exact 
     throw new Error(result.error || "Failed to generate summary");
   }
 
-  return result.data.summary;
+  return {
+    summary: result.data.summary,
+    type: result.data.type
+  };
 }

@@ -140,17 +140,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
         if (!userMessage.trim()) return;
 
-        const lastPrompt = userPromptManager.getLastUncapturedPrompt(input.sessionID);
-        
-        if (lastPrompt) {
-          log("Detected cancelled prompt, cleaning up", { 
-            sessionID: input.sessionID, 
-            cancelledPromptId: lastPrompt.id 
-          });
-          
-          userPromptManager.deletePrompt(lastPrompt.id);
-        }
-
         userPromptManager.savePrompt(
           input.sessionID,
           output.message.id,
