@@ -1,4 +1,5 @@
 import { CONFIG } from "../config.js";
+import { getUserProfileContext } from "./user-profile/profile-context.js";
 
 interface MemoryResultMinimal {
   similarity: number;
@@ -10,35 +11,17 @@ interface MemoriesResponseMinimal {
   results?: MemoryResultMinimal[];
 }
 
-interface ProfileResponse {
-  profile?: {
-    static: string[];
-    dynamic: string[];
-  };
-}
-
 export function formatContextForPrompt(
-  profile: ProfileResponse | null,
+  userId: string | null,
   userMemories: MemoriesResponseMinimal,
   projectMemories: MemoriesResponseMinimal
 ): string {
   const parts: string[] = ["[MEMORY]"];
 
-  if (CONFIG.injectProfile && profile?.profile) {
-    const { static: staticFacts, dynamic: dynamicFacts } = profile.profile;
-
-    if (staticFacts.length > 0) {
-      parts.push("\nUser Profile:");
-      staticFacts.slice(0, CONFIG.maxProfileItems).forEach((fact) => {
-        parts.push(`- ${fact}`);
-      });
-    }
-
-    if (dynamicFacts.length > 0) {
-      parts.push("\nRecent Context:");
-      dynamicFacts.slice(0, CONFIG.maxProfileItems).forEach((fact) => {
-        parts.push(`- ${fact}`);
-      });
+  if (CONFIG.injectProfile && userId) {
+    const profileContext = getUserProfileContext(userId);
+    if (profileContext) {
+      parts.push("\n" + profileContext);
     }
   }
 

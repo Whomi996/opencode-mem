@@ -218,13 +218,11 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             }
           }
 
-          const [profileResult, userMemoriesResult, projectMemoriesListResult] = await Promise.all([
-            memoryClient.getProfile(tags.user.tag, userMessage),
+          const [userMemoriesResult, projectMemoriesListResult] = await Promise.all([
             memoryClient.searchMemories(userMessage, tags.user.tag),
             memoryClient.listMemories(tags.project.tag, CONFIG.maxProjectMemories),
           ]);
 
-          const profile = profileResult.success ? profileResult : null;
           const userMemories = userMemoriesResult.success ? userMemoriesResult : { results: [] };
           const projectMemoriesList = projectMemoriesListResult.success
             ? projectMemoriesListResult
@@ -242,7 +240,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             timing: 0,
           };
 
-          const memoryContext = formatContextForPrompt(profile, userMemories, projectMemories);
+          const userId = tags.user.userEmail || null;
+          const memoryContext = formatContextForPrompt(userId, userMemories, projectMemories);
 
           if (memoryContext) {
             const contextPart: Part = {
@@ -480,20 +479,30 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               }
 
               case "profile": {
-                const result = await memoryClient.getProfile(tags.user.tag, args.query);
+                const { userProfileManager } = await import("./services/user-profile/user-profile-manager.js");
+                const userId = tags.user.userEmail || "unknown";
+                const profile = userProfileManager.getActiveProfile(userId);
 
-                if (!result.success) {
+                if (!profile) {
                   return JSON.stringify({
-                    success: false,
-                    error: result.error || "Failed to fetch profile",
+                    success: true,
+                    profile: null,
+                    message: "No user profile found",
                   });
                 }
+
+                const profileData = JSON.parse(profile.profileData);
 
                 return JSON.stringify({
                   success: true,
                   profile: {
-                    static: result.profile?.static || [],
-                    dynamic: result.profile?.dynamic || [],
+                    preferences: profileData.preferences,
+                    patterns: profileData.patterns,
+                    workflows: profileData.workflows,
+                    skillLevel: profileData.skillLevel,
+        version: profile.version,
+                    lastAnalyzed: profile.lastAnalyzedAt,
+                    totalPromptsAnalyzed: profile.totalPromptsAnalyzed,
                   },
                 });
               }

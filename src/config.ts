@@ -48,6 +48,11 @@ interface OpenCodeMemConfig {
   deduplicationEnabled?: boolean;
   deduplicationSimilarityThreshold?: number;
   userMemoryAnalysisInterval?: number;
+  userProfileMaxPreferences?: number;
+  userProfileMaxPatterns?: number;
+  userProfileMaxWorkflows?: number;
+  userProfileConfidenceDecayDays?: number;
+  userProfileChangelogRetentionCount?: number;
 }
 
 const DEFAULT_KEYWORD_PATTERNS = [
@@ -110,6 +115,11 @@ const DEFAULTS: Required<
   deduplicationEnabled: true,
   deduplicationSimilarityThreshold: 0.9,
   userMemoryAnalysisInterval: 10,
+  userProfileMaxPreferences: 20,
+  userProfileMaxPatterns: 15,
+  userProfileMaxWorkflows: 10,
+  userProfileConfidenceDecayDays: 30,
+  userProfileChangelogRetentionCount: 5,
 };
 
 function isValidRegex(pattern: string): boolean {
@@ -178,18 +188,32 @@ const CONFIG_TEMPLATE = `{
   // Web Server Settings
   // ============================================
   
+  // Enable web UI for managing memories (accessible at http://localhost:4747)
   "webServerEnabled": true,
+  
+  // Port for web UI server
   "webServerPort": 4747,
+  
+  // Host address for web UI (use 127.0.0.1 for local only, 0.0.0.0 for network access)
   "webServerHost": "127.0.0.1",
   
   // ============================================
   // Database Settings
   // ============================================
   
+  // Maximum vectors per database shard (auto-creates new shard when limit reached)
   "maxVectorsPerShard": 50000,
+  
+  // Automatically delete old memories based on retention period
   "autoCleanupEnabled": true,
+  
+  // Days to keep memories before auto-cleanup (only if autoCleanupEnabled is true)
   "autoCleanupRetentionDays": 30,
+  
+  // Automatically detect and remove duplicate memories
   "deduplicationEnabled": true,
+  
+  // Similarity threshold (0-1) for detecting duplicates (higher = stricter)
   "deduplicationSimilarityThreshold": 0.90,
   
   // ============================================
@@ -235,37 +259,69 @@ const CONFIG_TEMPLATE = `{
   //   "memoryApiUrl": "https://api.groq.com/openai/v1"
   //   "memoryApiKey": "gsk_..."
   
-  // Multi-iteration settings (for openai-responses and anthropic)
+  // Maximum iterations for multi-turn AI analysis (for openai-responses and anthropic)
   "autoCaptureMaxIterations": 5,
+  
+  // Timeout per iteration in milliseconds (30 seconds default)
   "autoCaptureIterationTimeout": 30000,
   
-  // Session management
+  // Days to keep AI session history before cleanup
   "aiSessionRetentionDays": 7,
   
   // ============================================
   // User Memory Learning
   // ============================================
   
-  // Analyze user prompts every N prompts to learn patterns and preferences
+  // Analyze user prompts every N prompts to build/update your user profile
   // When N uncaptured prompts accumulate, AI will analyze them to identify:
-  // - User preferences (code style, communication style)
-  // - User patterns (recurring topics, problem domains)
-  // - User workflows (development habits, sequences)
+  // - User preferences (code style, communication style, tool preferences)
+  // - User patterns (recurring topics, problem domains, technical interests)
+  // - User workflows (development habits, sequences, learning style)
+  // - Skill level (overall and per-domain assessment)
   "userMemoryAnalysisInterval": 10,
+  
+  // Maximum number of preferences to keep in user profile (sorted by confidence)
+  // Preferences are things like "prefers code without comments", "likes concise responses"
+  "userProfileMaxPreferences": 20,
+  
+  // Maximum number of patterns to keep in user profile (sorted by frequency)
+  // Patterns are recurring topics like "often asks about database optimization"
+  "userProfileMaxPatterns": 15,
+  
+  // Maximum number of workflows to keep in user profile (sorted by frequency)
+  // Workflows are sequences like "usually asks for tests after implementation"
+  "userProfileMaxWorkflows": 10,
+  
+  // Days before preference confidence starts to decay (if not reinforced)
+  // Preferences that aren't seen again will gradually lose confidence and be removed
+  "userProfileConfidenceDecayDays": 30,
+  
+  // Number of profile versions to keep in changelog (for rollback/debugging)
+  // Older versions are automatically cleaned up
+  "userProfileChangelogRetentionCount": 5,
   
   // ============================================
   // Search Settings
   // ============================================
   
+  // Minimum similarity score (0-1) for memory search results
   "similarityThreshold": 0.6,
+  
+  // Maximum number of user-scoped memories to return in search
   "maxMemories": 5,
+  
+  // Maximum number of project-scoped memories to return in search
   "maxProjectMemories": 10,
   
   // ============================================
   // Advanced Settings
   // ============================================
   
+  // Inject user profile into AI context (preferences, patterns, workflows)
   "injectProfile": true,
+  
+  // Additional regex patterns to trigger manual memory capture
+  // Default patterns: "remember", "memorize", "save this", "note this", etc.
   "keywordPatterns": []
 }
 `;
@@ -348,6 +404,14 @@ export const CONFIG = {
     fileConfig.deduplicationSimilarityThreshold ?? DEFAULTS.deduplicationSimilarityThreshold,
   userMemoryAnalysisInterval:
     fileConfig.userMemoryAnalysisInterval ?? DEFAULTS.userMemoryAnalysisInterval,
+  userProfileMaxPreferences:
+    fileConfig.userProfileMaxPreferences ?? DEFAULTS.userProfileMaxPreferences,
+  userProfileMaxPatterns: fileConfig.userProfileMaxPatterns ?? DEFAULTS.userProfileMaxPatterns,
+  userProfileMaxWorkflows: fileConfig.userProfileMaxWorkflows ?? DEFAULTS.userProfileMaxWorkflows,
+  userProfileConfidenceDecayDays:
+    fileConfig.userProfileConfidenceDecayDays ?? DEFAULTS.userProfileConfidenceDecayDays,
+  userProfileChangelogRetentionCount:
+    fileConfig.userProfileChangelogRetentionCount ?? DEFAULTS.userProfileChangelogRetentionCount,
 };
 
 export function isConfigured(): boolean {

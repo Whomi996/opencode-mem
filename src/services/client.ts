@@ -5,7 +5,7 @@ import { connectionManager } from "./sqlite/connection-manager.js";
 import { CONFIG } from "../config.js";
 import { log } from "./logger.js";
 import type { MemoryType } from "../types/index.js";
-import type { MemoryRecord, SearchResult } from "./sqlite/types.js";
+import type { MemoryRecord } from "./sqlite/types.js";
 
 function safeToISOString(timestamp: any): string {
   try {
@@ -46,11 +46,6 @@ function extractScopeFromContainerTag(containerTag: string): {
     return { scope, hash };
   }
   return { scope: "user", hash: containerTag };
-}
-
-interface ProfileData {
-  static: string[];
-  dynamic: string[];
 }
 
 export class LocalMemoryClient {
@@ -127,47 +122,6 @@ export class LocalMemoryClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
       log("searchMemories: error", { error: errorMessage });
       return { success: false as const, error: errorMessage, results: [], total: 0, timing: 0 };
-    }
-  }
-
-  async getProfile(containerTag: string, query?: string) {
-    try {
-      await this.initialize();
-
-      const { scope, hash } = extractScopeFromContainerTag(containerTag);
-      const shards = shardManager.getAllShards(scope, hash);
-
-      if (shards.length === 0) {
-        log("getProfile: no shards found", { containerTag });
-        return { success: true as const, profile: { static: [], dynamic: [] } };
-      }
-
-      const staticFacts: string[] = [];
-      const dynamicFacts: string[] = [];
-
-      for (const shard of shards) {
-        const db = connectionManager.getConnection(shard.dbPath);
-        const memories = vectorSearch.listMemories(db, containerTag, CONFIG.maxProfileItems * 2);
-
-        for (const m of memories) {
-          if (m.type === "preference") {
-            staticFacts.push(m.content);
-          } else {
-            dynamicFacts.push(m.content);
-          }
-        }
-      }
-
-      const profile: ProfileData = {
-        static: staticFacts.slice(0, CONFIG.maxProfileItems),
-        dynamic: dynamicFacts.slice(0, CONFIG.maxProfileItems),
-      };
-
-      return { success: true as const, profile };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      log("getProfile: error", { error: errorMessage });
-      return { success: false as const, error: errorMessage, profile: null };
     }
   }
 
