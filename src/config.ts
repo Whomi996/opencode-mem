@@ -20,6 +20,7 @@ if (!existsSync(DATA_DIR)) {
 
 interface OpenCodeMemConfig {
   storagePath?: string;
+  customSqlitePath?: string;
   embeddingModel?: string;
   embeddingDimensions?: number;
   embeddingApiUrl?: string;
@@ -82,6 +83,7 @@ const DEFAULTS: Required<
     | "memoryApiUrl"
     | "memoryApiKey"
     | "memoryProvider"
+    | "customSqlitePath"
   >
 > & {
   embeddingApiUrl?: string;
@@ -90,6 +92,7 @@ const DEFAULTS: Required<
   memoryApiUrl?: string;
   memoryApiKey?: string;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic";
+  customSqlitePath?: string;
 } = {
   storagePath: join(DATA_DIR, "data"),
   embeddingModel: "Xenova/nomic-embed-text-v1",
@@ -161,6 +164,22 @@ const CONFIG_TEMPLATE = `{
   
   // Storage location for vector database
   "storagePath": "~/.opencode-mem/data",
+  
+  // ============================================
+  // macOS SQLite Extension Loading (REQUIRED FOR macOS)
+  // ============================================
+  
+  // macOS users MUST set this to use Homebrew SQLite instead of Apple's SQLite
+  // Apple's SQLite disables extension loading which breaks sqlite-vec
+  // 
+  // Common paths:
+  // - Homebrew (Intel):      "/usr/local/opt/sqlite/lib/libsqlite3.dylib"
+  // - Homebrew (Apple Silicon): "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib"
+  // 
+  // To install: brew install sqlite
+  // To find path: brew --prefix sqlite
+  // 
+  // "customSqlitePath": "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib",
   
   // ============================================
   // Embedding Model (for similarity search)
@@ -358,6 +377,7 @@ function getEmbeddingDimensions(model: string): number {
 
 export const CONFIG = {
   storagePath: expandPath(fileConfig.storagePath ?? DEFAULTS.storagePath),
+  customSqlitePath: fileConfig.customSqlitePath ? expandPath(fileConfig.customSqlitePath) : undefined,
   embeddingModel: fileConfig.embeddingModel ?? DEFAULTS.embeddingModel,
   embeddingDimensions:
     fileConfig.embeddingDimensions ??

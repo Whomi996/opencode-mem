@@ -1,5 +1,9 @@
 # OpenCode Memory
 
+[![npm version](https://img.shields.io/npm/v/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
+[![npm downloads](https://img.shields.io/npm/dm/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
+[![license](https://img.shields.io/npm/l/opencode-mem.svg)](https://www.npmjs.com/package/opencode-mem)
+
 ![OpenCode Memory Banner](.github/banner.png)
 
 A persistent memory system for AI coding agents that enables long-term context retention across sessions using local vector database technology.
@@ -36,6 +40,36 @@ Add the plugin to your OpenCode configuration:
 ```
 
 OpenCode will automatically download and install the plugin on next startup.
+
+### macOS Users - IMPORTANT
+
+macOS ships with Apple's SQLite which **disables extension loading** for security reasons. You must install and configure Homebrew SQLite:
+
+**Step 1: Install Homebrew SQLite**
+```bash
+brew install sqlite
+```
+
+**Step 2: Find the library path**
+```bash
+brew --prefix sqlite
+```
+
+**Step 3: Configure the path**
+
+Edit `~/.config/opencode/opencode-mem.jsonc` and add:
+
+```jsonc
+{
+  "customSqlitePath": "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib"
+}
+```
+
+**Common paths:**
+- **Apple Silicon (M1/M2/M3)**: `/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib`
+- **Intel Mac**: `/usr/local/opt/sqlite/lib/libsqlite3.dylib`
+
+The plugin will auto-detect these paths if not configured, but manual configuration is recommended for reliability.
 
 ### Install from Source
 
@@ -83,6 +117,7 @@ Configuration file: `~/.config/opencode/opencode-mem.jsonc`
 ```jsonc
 {
   "storagePath": "~/.opencode-mem/data",
+  "customSqlitePath": "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib",
   "embeddingModel": "Xenova/nomic-embed-text-v1",
   "webServerEnabled": true,
   "webServerPort": 4747,
