@@ -14,7 +14,7 @@ OpenCode Memory provides AI coding agents with the ability to remember and recal
 - **Dual Memory Scopes**: Separate user-level and project-level memory contexts
 - **Unified Timeline**: Browse memories and prompts together with linking support
 - **Prompt-Memory Linking**: Bidirectional links between prompts and generated memories
-- **User Learning System**: Analyzes user patterns and preferences from conversation history
+- **User Profile System**: Structured learning with preferences, patterns, workflows, and skill assessment
 - **Web Interface**: Full-featured UI for memory management and search
 - **Auto-Capture System**: Intelligent prompt-based memory extraction
 - **Multi-Provider AI**: Support for OpenAI, Anthropic, and OpenAI-compatible APIs
@@ -52,14 +52,24 @@ bun run build
 ### Basic Usage
 
 ```typescript
-memory({ mode: "add", content: "User prefers TypeScript", scope: "user" })
-memory({ mode: "search", query: "coding preferences", scope: "user" })
+memory({ mode: "add", content: "Project uses microservices", scope: "project" })
+memory({ mode: "search", query: "architecture decisions", scope: "project" })
 memory({ mode: "profile" })
 ```
+
+**Note**: User-scoped `add` is deprecated in v2.2+. Use profile system instead.
 
 ### Web Interface
 
 Access at `http://127.0.0.1:4747` to browse memories, view prompt-memory links, and manage your memory database.
+
+**Project Memory Timeline:**
+
+![Project Memory Timeline](.github/screenshot-project-memory.png)
+
+**User Profile Viewer:**
+
+![User Profile Viewer](.github/screenshot-user-profile.png)
 
 ### Configuration
 
@@ -75,9 +85,27 @@ Configuration file: `~/.config/opencode/opencode-mem.jsonc`
   "memoryProvider": "openai-chat",
   "memoryModel": "gpt-4",
   "memoryApiUrl": "https://api.openai.com/v1",
-  "memoryApiKey": "sk-..."
+  "memoryApiKey": "sk-...",
+  "userMemoryAnalysisInterval": 10,
+  "userProfileMaxPreferences": 20,
+  "userProfileMaxPatterns": 15,
+  "userProfileMaxWorkflows": 10,
+  "userProfileConfidenceDecayDays": 30,
+  "userProfileChangelogRetentionCount": 5
 }
 ```
+
+## Breaking Changes (v2.2)
+
+**User-scoped memories deprecated in favor of structured user profiles:**
+
+- Removed: User-scoped `addMemory` (now returns error)
+- Changed: `memory({ mode: "profile" })` returns new structure (preferences/patterns/workflows/skillLevel)
+- Added: 5 new config options for profile management
+- New behavior: User learning creates/updates structured profile instead of individual memories
+- Migration: Existing user memories remain readable but new ones cannot be created
+
+**Migration required**: Update code using `mode: "profile"` to handle new structure.
 
 ## Breaking Changes (v2.0)
 
@@ -98,6 +126,7 @@ For detailed documentation, see the [Wiki](https://github.com/tickernelz/opencod
 - [Installation Guide](https://github.com/tickernelz/opencode-mem/wiki/Installation-Guide)
 - [Quick Start](https://github.com/tickernelz/opencode-mem/wiki/Quick-Start)
 - [Configuration Guide](https://github.com/tickernelz/opencode-mem/wiki/Configuration-Guide)
+- [User Profile System](https://github.com/tickernelz/opencode-mem/wiki/User-Profile)
 - [Memory Operations](https://github.com/tickernelz/opencode-mem/wiki/Memory-Operations)
 - [Auto-Capture System](https://github.com/tickernelz/opencode-mem/wiki/Auto-Capture-System)
 - [Web Interface](https://github.com/tickernelz/opencode-mem/wiki/Web-Interface)
@@ -121,18 +150,21 @@ Automatically extracts memories from conversations:
 3. Links memory to source prompt
 4. Skips non-technical conversations
 
-### User Learning System
+### User Profile System
 
-Analyzes batches of prompts to identify patterns (default: every 10 prompts):
+Builds structured user profile from conversation history (default: every 10 prompts):
 
-- Coding style preferences
-- Communication patterns
-- Tool preferences
-- Skill level indicators
+- **Preferences**: Code style, communication style, tool preferences (with confidence scores)
+- **Patterns**: Recurring topics, problem domains, technical interests (with frequency tracking)
+- **Workflows**: Development sequences, habits, learning style
+- **Skill Level**: Overall and per-domain assessment
+
+Profile includes versioning, changelog, and confidence decay mechanism.
 
 ### Web Interface
 
 - Unified timeline of memories and prompts
+- User profile viewer with changelog
 - Visual prompt-memory link indicators
 - Cascade delete for linked items
 - Bulk operations
@@ -144,7 +176,7 @@ Analyzes batches of prompts to identify patterns (default: every 10 prompts):
 ### Memory Tool
 
 ```typescript
-memory({ mode: "add", content: "...", scope: "user|project" })
+memory({ mode: "add", content: "...", scope: "project" })
 memory({ mode: "search", query: "...", scope: "user|project" })
 memory({ mode: "list", scope: "user|project", limit: 10 })
 memory({ mode: "profile" })
@@ -154,14 +186,25 @@ memory({ mode: "auto-capture-stats" })
 memory({ mode: "capture-now" })
 ```
 
+**Note**: `scope: "user"` for `add` mode is deprecated in v2.2+.
+
 ### REST API
 
+**Memory & Prompt Management:**
 - `GET /api/memories?scope=project&includePrompts=true` - List memories/prompts
 - `POST /api/memories` - Create memory
 - `PUT /api/memories/:id` - Update memory
 - `DELETE /api/memories/:id?cascade=true` - Delete memory (and linked prompt)
 - `DELETE /api/prompts/:id?cascade=true` - Delete prompt (and linked memory)
 - `POST /api/search` - Vector search
+
+**User Profile:**
+- `GET /api/profile` - Get user profile
+- `GET /api/profile/changelog?limit=5` - Get profile changelog
+- `GET /api/profile/snapshot/:changelogId` - Get profile snapshot
+- `POST /api/profile/refresh` - Force profile refresh
+
+**Maintenance:**
 - `POST /api/cleanup` - Run cleanup
 - `POST /api/deduplicate` - Run deduplication
 
