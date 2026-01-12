@@ -500,16 +500,16 @@ function handleAddScopeChange() {
 
   tagDropdown.innerHTML = '<option value="">Select tag</option>';
 
-  if (!scope) return;
+  if (!scope || scope !== "project") return;
 
-  const tags = scope === "user" ? state.tags.user : state.tags.project;
+  const tags = state.tags.project;
   tags.forEach((tagInfo) => {
     const displayText = tagInfo.displayName || tagInfo.tag;
     const shortDisplay =
       displayText.length > 50 ? displayText.substring(0, 50) + "..." : displayText;
     const option = document.createElement("option");
     option.value = tagInfo.tag;
-    option.textContent = `[${scope}] ${shortDisplay}`;
+    option.textContent = shortDisplay;
     tagDropdown.appendChild(option);
   });
 }

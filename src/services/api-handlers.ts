@@ -217,7 +217,42 @@ export async function handleListMemories(
       timeline = [...memoriesWithType, ...promptsWithType];
     }
 
-    timeline.sort((a: any, b: any) => b.createdAt - a.createdAt);
+    const linkedPairs = new Map<string, { memory: any; prompt: any }>();
+    const standalone: any[] = [];
+
+    for (const item of timeline) {
+      if (item.type === "memory" && item.linkedPromptId) {
+        if (!linkedPairs.has(item.linkedPromptId)) {
+          linkedPairs.set(item.linkedPromptId, { memory: item, prompt: null });
+        } else {
+          linkedPairs.get(item.linkedPromptId)!.memory = item;
+        }
+      } else if (item.type === "prompt" && item.linkedMemoryId) {
+        if (!linkedPairs.has(item.id)) {
+          linkedPairs.set(item.id, { memory: null, prompt: item });
+        } else {
+          linkedPairs.get(item.id)!.prompt = item;
+        }
+      } else {
+        standalone.push(item);
+      }
+    }
+
+    const sortedTimeline: any[] = [];
+
+    const pairs = Array.from(linkedPairs.values())
+      .filter((p) => p.memory && p.prompt)
+      .sort((a, b) => b.memory.createdAt - a.memory.createdAt);
+
+    for (const pair of pairs) {
+      sortedTimeline.push(pair.memory);
+      sortedTimeline.push(pair.prompt);
+    }
+
+    standalone.sort((a, b) => b.createdAt - a.createdAt);
+    sortedTimeline.push(...standalone);
+
+    timeline = sortedTimeline;
 
     const total = timeline.length;
     const totalPages = Math.ceil(total / pageSize);
@@ -294,6 +329,14 @@ export async function handleAddMemory(data: {
 
     const vector = await embeddingService.embedWithTimeout(data.content);
     const { scope, hash } = extractScopeFromTag(data.containerTag);
+
+    if (scope === "user") {
+      return {
+        success: false,
+        error: "User-scoped memories are deprecated. Use user profile system instead.",
+      };
+    }
+
     const shard = shardManager.getWriteShard(scope, hash);
 
     const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
