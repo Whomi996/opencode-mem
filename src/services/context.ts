@@ -13,7 +13,6 @@ interface MemoriesResponseMinimal {
 
 export function formatContextForPrompt(
   userId: string | null,
-  userMemories: MemoriesResponseMinimal,
   projectMemories: MemoriesResponseMinimal
 ): string {
   const parts: string[] = ["[MEMORY]"];
@@ -29,16 +28,6 @@ export function formatContextForPrompt(
   if (projectResults.length > 0) {
     parts.push("\nProject Knowledge:");
     projectResults.forEach((mem) => {
-      const similarity = Math.round(mem.similarity * 100);
-      const content = mem.memory || mem.chunk || "";
-      parts.push(`- [${similarity}%] ${content}`);
-    });
-  }
-
-  const userResults = userMemories.results || [];
-  if (userResults.length > 0) {
-    parts.push("\nRelevant Memories:");
-    userResults.forEach((mem) => {
       const similarity = Math.round(mem.similarity * 100);
       const content = mem.memory || mem.chunk || "";
       parts.push(`- [${similarity}%] ${content}`);

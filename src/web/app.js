@@ -1,14 +1,13 @@
 const API_BASE = "";
 
 const state = {
-  tags: { user: [], project: [] },
+  tags: { project: [] },
   memories: [],
   currentPage: 1,
   pageSize: 20,
   totalPages: 1,
   totalItems: 0,
   selectedTag: "",
-  currentScope: "project",
   currentView: "project",
   searchQuery: "",
   isSearching: false,
@@ -55,7 +54,7 @@ function populateTagDropdowns() {
   tagFilter.innerHTML = '<option value="">All Tags</option>';
   addTag.innerHTML = '<option value="">Select tag</option>';
 
-  const scopeTags = state.currentScope === "user" ? state.tags.user : state.tags.project;
+  const scopeTags = state.tags.project;
 
   scopeTags.forEach((tagInfo) => {
     const displayText = tagInfo.displayName || tagInfo.tag;
@@ -77,7 +76,7 @@ function populateTagDropdowns() {
 async function loadMemories() {
   showRefreshIndicator(true);
 
-  let endpoint = `/api/memories?page=${state.currentPage}&pageSize=${state.pageSize}&scope=${state.currentScope}&includePrompts=true`;
+  let endpoint = `/api/memories?page=${state.currentPage}&pageSize=${state.pageSize}&includePrompts=true`;
 
   if (state.isSearching && state.searchQuery) {
     endpoint = `/api/search?q=${encodeURIComponent(state.searchQuery)}&page=${state.currentPage}&pageSize=${state.pageSize}`;
@@ -173,15 +172,13 @@ function renderMemoryCard(memory) {
       : "";
 
   let displayInfo = memory.displayName || memory.id;
-  if (memory.scope === "project" && memory.projectPath) {
+  if (memory.projectPath) {
     const pathParts = memory.projectPath.split("/");
     displayInfo = pathParts[pathParts.length - 1] || memory.projectPath;
   }
 
   let subtitle = "";
-  if (memory.scope === "user" && memory.userEmail) {
-    subtitle = `<span class="memory-subtitle">${escapeHtml(memory.userEmail)}</span>`;
-  } else if (memory.scope === "project" && memory.projectPath) {
+  if (memory.projectPath) {
     subtitle = `<span class="memory-subtitle">${escapeHtml(memory.projectPath)}</span>`;
   }
 
@@ -202,7 +199,6 @@ function renderMemoryCard(memory) {
       <div class="memory-header">
         <div class="meta">
           <input type="checkbox" class="memory-checkbox" data-id="${memory.id}" ${isSelected ? "checked" : ""} />
-          <span class="badge badge-${memory.scope}">${memory.scope}</span>
           ${memory.memoryType ? `<span class="badge badge-type">${memory.memoryType}</span>` : ""}
           ${isLinked ? '<span class="badge badge-linked"><i data-lucide="link" class="icon-sm"></i> LINKED</span>' : ""}
           ${similarityHtml}
@@ -280,10 +276,9 @@ function updatePagination() {
 }
 
 function updateSectionTitle() {
-  const scopeName = state.currentScope.toUpperCase();
   const title = state.isSearching
     ? `└─ SEARCH RESULTS (${state.totalItems}) ──`
-    : `└─ ${scopeName} MEMORIES (${state.totalItems}) ──`;
+    : `└─ PROJECT MEMORIES (${state.totalItems}) ──`;
   document.getElementById("section-title").textContent = title;
 }
 
@@ -495,12 +490,9 @@ function changePage(delta) {
 }
 
 function handleAddScopeChange() {
-  const scope = document.getElementById("add-scope").value;
   const tagDropdown = document.getElementById("add-tag");
 
   tagDropdown.innerHTML = '<option value="">Select tag</option>';
-
-  if (!scope || scope !== "project") return;
 
   const tags = state.tags.project;
   tags.forEach((tagInfo) => {

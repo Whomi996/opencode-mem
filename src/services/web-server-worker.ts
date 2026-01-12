@@ -73,9 +73,8 @@ async function handleRequest(req: Request): Promise<Response> {
       const tag = url.searchParams.get("tag") || undefined;
       const page = parseInt(url.searchParams.get("page") || "1");
       const pageSize = parseInt(url.searchParams.get("pageSize") || "20");
-      const scope = url.searchParams.get("scope") as "user" | "project" | undefined;
       const includePrompts = url.searchParams.get("includePrompts") !== "false";
-      const result = await handleListMemories(tag, page, pageSize, scope, includePrompts);
+      const result = await handleListMemories(tag, page, pageSize, includePrompts);
       return jsonResponse(result);
     }
 

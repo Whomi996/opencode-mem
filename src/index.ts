@@ -24,9 +24,10 @@ const MEMORY_NUDGE_MESSAGE = `[MEMORY TRIGGER DETECTED]
 The user wants you to remember something. You MUST use the \`memory\` tool with \`mode: "add"\` to save this information.
 
 Extract the key information the user wants remembered and save it as a concise, searchable memory.
-- Use \`scope: "project"\` for project-specific preferences (e.g., "run lint with tests")
-- Use \`scope: "user"\` for cross-project preferences (e.g., "prefers concise responses")
+- Use \`scope: "project"\` for project-specific knowledge (e.g., "run lint with tests", architecture decisions)
 - Choose an appropriate \`type\`: "preference", "project-config", "learned-pattern", etc.
+
+Note: User preferences are automatically learned through the user profile system. Only store project-specific information.
 
 DO NOT skip this step. The user explicitly asked you to remember.`;
 
@@ -216,12 +217,11 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             }
           }
 
-          const [userMemoriesResult, projectMemoriesListResult] = await Promise.all([
-            memoryClient.searchMemories(userMessage, tags.user.tag),
-            memoryClient.listMemories(tags.project.tag, CONFIG.maxProjectMemories),
-          ]);
+          const projectMemoriesListResult = await memoryClient.listMemories(
+            tags.project.tag,
+            CONFIG.maxProjectMemories
+          );
 
-          const userMemories = userMemoriesResult.success ? userMemoriesResult : { results: [] };
           const projectMemoriesList = projectMemoriesListResult.success
             ? projectMemoriesListResult
             : { memories: [] };
@@ -239,7 +239,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           };
 
           const userId = tags.user.userEmail || null;
-          const memoryContext = formatContextForPrompt(userId, userMemories, projectMemories);
+          const memoryContext = formatContextForPrompt(userId, projectMemories);
 
           if (memoryContext) {
             const contextPart: Part = {
@@ -283,7 +283,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           content: tool.schema.string().optional(),
           query: tool.schema.string().optional(),
           type: tool.schema.string().optional(),
-          scope: tool.schema.enum(["user", "project"]).optional(),
           memoryId: tool.schema.string().optional(),
           limit: tool.schema.number().optional(),
         },
@@ -293,7 +292,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
             content?: string;
             query?: string;
             type?: MemoryType;
-            scope?: MemoryScope;
             memoryId?: string;
             limit?: number;
           },
@@ -325,28 +323,28 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   commands: [
                     {
                       command: "add",
-                      description: "Store a new memory",
-                      args: ["content", "type?", "scope?"],
+                      description: "Store a new project memory",
+                      args: ["content", "type?"],
                     },
                     {
                       command: "search",
-                      description: "Search memories",
-                      args: ["query", "scope?"],
+                      description: "Search project memories",
+                      args: ["query"],
                     },
                     {
                       command: "profile",
-                      description: "View user profile",
-                      args: ["query?"],
+                      description: "View user profile (preferences, patterns, workflows)",
+                      args: [],
                     },
                     {
                       command: "list",
-                      description: "List recent memories",
-                      args: ["scope?", "limit?"],
+                      description: "List recent project memories",
+                      args: ["limit?"],
                     },
                     {
                       command: "forget",
-                      description: "Remove a memory",
-                      args: ["memoryId", "scope?"],
+                      description: "Remove a project memory",
+                      args: ["memoryId"],
                     },
                     {
                       command: "capture-now",
@@ -354,10 +352,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                       args: [],
                     },
                   ],
-                  scopes: {
-                    user: "Cross-project user behaviors, preferences, patterns, requests",
-                    project: "Project-specific knowledge, decisions, architecture, context",
-                  },
+                  note: "User preferences are automatically learned through the user profile system. Only project-specific memories can be added manually.",
                   typeGuidance:
                     "Choose appropriate type: preference, architecture, workflow, bug-fix, configuration, pattern, request, context, etc. Be specific and descriptive with categories.",
                 });
@@ -379,8 +374,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   });
                 }
 
-                const scope = args.scope || "project";
-                const tagInfo = scope === "user" ? tags.user : tags.project;
+                const tagInfo = tags.project;
 
                 const result = await memoryClient.addMemory(sanitizedContent, tagInfo.tag, {
                   type: args.type,
@@ -401,9 +395,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
                 return JSON.stringify({
                   success: true,
-                  message: `Memory added to ${scope} scope`,
+                  message: `Memory added to project`,
                   id: result.id,
-                  scope,
                   type: args.type,
                 });
               }
@@ -416,64 +409,15 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   });
                 }
 
-                const scope = args.scope;
-
-                if (scope === "user") {
-                  const result = await memoryClient.searchMemories(args.query, tags.user.tag);
-                  if (!result.success) {
-                    return JSON.stringify({
-                      success: false,
-                      error: result.error || "Failed to search memories",
-                    });
-                  }
-                  return formatSearchResults(args.query, scope, result, args.limit);
-                }
-
-                if (scope === "project") {
-                  const result = await memoryClient.searchMemories(args.query, tags.project.tag);
-                  if (!result.success) {
-                    return JSON.stringify({
-                      success: false,
-                      error: result.error || "Failed to search memories",
-                    });
-                  }
-                  return formatSearchResults(args.query, scope, result, args.limit);
-                }
-
-                const [userResult, projectResult] = await Promise.all([
-                  memoryClient.searchMemories(args.query, tags.user.tag),
-                  memoryClient.searchMemories(args.query, tags.project.tag),
-                ]);
-
-                if (!userResult.success || !projectResult.success) {
+                const result = await memoryClient.searchMemories(args.query, tags.project.tag);
+                if (!result.success) {
                   return JSON.stringify({
                     success: false,
-                    error: userResult.error || projectResult.error || "Failed to search memories",
+                    error: result.error || "Failed to search memories",
                   });
                 }
 
-                const combined = [
-                  ...(userResult.results || []).map((r: any) => ({
-                    ...r,
-                    scope: "user" as const,
-                  })),
-                  ...(projectResult.results || []).map((r: any) => ({
-                    ...r,
-                    scope: "project" as const,
-                  })),
-                ].sort((a, b) => b.similarity - a.similarity);
-
-                return JSON.stringify({
-                  success: true,
-                  query: args.query,
-                  count: combined.length,
-                  results: combined.slice(0, args.limit || 10).map((r) => ({
-                    id: r.id,
-                    content: r.memory || r.chunk,
-                    similarity: Math.round(r.similarity * 100),
-                    scope: r.scope,
-                  })),
-                });
+                return formatSearchResults(args.query, result, args.limit);
               }
 
               case "profile": {
@@ -507,11 +451,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               }
 
               case "list": {
-                const scope = args.scope || "project";
                 const limit = args.limit || 20;
-                const tagInfo = scope === "user" ? tags.user : tags.project;
 
-                const result = await memoryClient.listMemories(tagInfo.tag, limit);
+                const result = await memoryClient.listMemories(tags.project.tag, limit);
 
                 if (!result.success) {
                   return JSON.stringify({
@@ -523,7 +465,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 const memories = result.memories || [];
                 return JSON.stringify({
                   success: true,
-                  scope,
                   count: memories.length,
                   memories: memories.map((m: any) => ({
                     id: m.id,
@@ -542,8 +483,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   });
                 }
 
-                const scope = args.scope || "project";
-
                 const result = await memoryClient.deleteMemory(args.memoryId);
 
                 if (!result.success) {
@@ -555,7 +494,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
                 return JSON.stringify({
                   success: true,
-                  message: `Memory ${args.memoryId} removed from ${scope} scope`,
+                  message: `Memory ${args.memoryId} removed`,
                 });
               }
 
@@ -642,7 +581,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
 function formatSearchResults(
   query: string,
-  scope: string | undefined,
   results: { results?: Array<{ id: string; memory?: string; chunk?: string; similarity: number }> },
   limit?: number
 ): string {
@@ -650,7 +588,6 @@ function formatSearchResults(
   return JSON.stringify({
     success: true,
     query,
-    scope,
     count: memoryResults.length,
     results: memoryResults.slice(0, limit || 10).map((r) => ({
       id: r.id,

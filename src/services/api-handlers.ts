@@ -16,7 +16,6 @@ interface Memory {
   id: string;
   content: string;
   type?: string;
-  scope: string;
   createdAt: string;
   updatedAt?: string;
   metadata?: Record<string, unknown>;
@@ -75,25 +74,21 @@ function safeJSONParse(jsonString: any): any {
   }
 }
 
-function extractScopeFromTag(tag: string): { scope: "user" | "project"; hash: string } {
+function extractScopeFromTag(tag: string): { scope: "project"; hash: string } {
   const parts = tag.split("_");
   if (parts.length >= 3) {
-    const scope = parts[1] as "user" | "project";
     const hash = parts.slice(2).join("_");
-    return { scope, hash };
+    return { scope: "project", hash };
   }
-  return { scope: "user", hash: tag };
+  return { scope: "project", hash: tag };
 }
 
-export async function handleListTags(): Promise<
-  ApiResponse<{ user: TagInfo[]; project: TagInfo[] }>
-> {
+export async function handleListTags(): Promise<ApiResponse<{ project: TagInfo[] }>> {
   try {
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards("user", "");
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     const tagsMap = new Map<string, TagInfo>();
 
@@ -116,20 +111,17 @@ export async function handleListTags(): Promise<
       }
     }
 
-    const userTags: TagInfo[] = [];
     const projectTags: TagInfo[] = [];
 
     for (const tagInfo of tagsMap.values()) {
-      if (tagInfo.tag.includes("_user_")) {
-        userTags.push(tagInfo);
-      } else if (tagInfo.tag.includes("_project_")) {
+      if (tagInfo.tag.includes("_project_")) {
         projectTags.push(tagInfo);
       }
     }
 
     return {
       success: true,
-      data: { user: userTags, project: projectTags },
+      data: { project: projectTags },
     };
   } catch (error) {
     log("handleListTags: error", { error: String(error) });
@@ -141,7 +133,6 @@ export async function handleListMemories(
   tag?: string,
   page: number = 1,
   pageSize: number = 20,
-  scope?: "user" | "project",
   includePrompts: boolean = true
 ): Promise<ApiResponse<PaginatedResponse<Memory | any>>> {
   try {
@@ -158,23 +149,13 @@ export async function handleListMemories(
         const memories = vectorSearch.listMemories(db, tag, 10000);
         allMemories.push(...memories);
       }
-    } else if (scope) {
-      const shards = shardManager.getAllShards(scope, "");
+    } else {
+      const shards = shardManager.getAllShards("project", "");
 
       for (const shard of shards) {
         const db = connectionManager.getConnection(shard.dbPath);
         const memories = vectorSearch.getAllMemories(db);
-        allMemories.push(...memories.filter((m: any) => m.container_tag?.includes(`_${scope}_`)));
-      }
-    } else {
-      const userShards = shardManager.getAllShards("user", "");
-      const projectShards = shardManager.getAllShards("project", "");
-      const allShards = [...userShards, ...projectShards];
-
-      for (const shard of allShards) {
-        const db = connectionManager.getConnection(shard.dbPath);
-        const memories = vectorSearch.getAllMemories(db);
-        allMemories.push(...memories);
+        allMemories.push(...memories.filter((m: any) => m.container_tag?.includes(`_project_`)));
       }
     }
 
@@ -185,7 +166,6 @@ export async function handleListMemories(
         id: r.id,
         content: r.content,
         memoryType: r.type,
-        scope: r.container_tag?.includes("_user_") ? "user" : "project",
         createdAt: Number(r.created_at),
         updatedAt: r.updated_at ? Number(r.updated_at) : undefined,
         metadata,
@@ -202,7 +182,7 @@ export async function handleListMemories(
 
     let timeline: any[] = memoriesWithType;
 
-    if (includePrompts && scope === "project") {
+    if (includePrompts) {
       const prompts = userPromptManager.getCapturedPrompts(tag);
       const promptsWithType = prompts.map((p) => ({
         type: "prompt",
@@ -267,7 +247,6 @@ export async function handleListMemories(
           id: item.id,
           content: item.content,
           memoryType: item.memoryType,
-          scope: item.scope,
           createdAt: safeToISOString(item.createdAt),
           updatedAt: item.updatedAt ? safeToISOString(item.updatedAt) : undefined,
           metadata: item.metadata,
@@ -330,13 +309,6 @@ export async function handleAddMemory(data: {
     const vector = await embeddingService.embedWithTimeout(data.content);
     const { scope, hash } = extractScopeFromTag(data.containerTag);
 
-    if (scope === "user") {
-      return {
-        success: false,
-        error: "User-scoped memories are deprecated. Use user profile system instead.",
-      };
-    }
-
     const shard = shardManager.getWriteShard(scope, hash);
 
     const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -381,9 +353,8 @@ export async function handleDeleteMemory(
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards("user", "");
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     let deletedPrompt = false;
 
@@ -450,9 +421,8 @@ export async function handleUpdateMemory(
 
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards("user", "");
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     let foundShard = null;
     let existingMemory = null;
@@ -535,9 +505,9 @@ export async function handleSearch(
         }
       }
     } else {
-      const userShards = shardManager.getAllShards("user", "");
+      
       const projectShards = shardManager.getAllShards("project", "");
-      const allShards = [...userShards, ...projectShards];
+      const allShards = [...projectShards];
 
       const uniqueTags = new Set<string>();
       for (const shard of allShards) {
@@ -577,7 +547,6 @@ export async function handleSearch(
       id: r.id,
       content: r.memory,
       type: r.metadata?.type,
-      scope: r.containerTag?.includes("_user_") ? "user" : "project",
       createdAt: safeToISOString(r.metadata?.createdAt),
       updatedAt: r.metadata?.updatedAt ? safeToISOString(r.metadata.updatedAt) : undefined,
       similarity: Math.round(r.similarity * 100),
@@ -617,9 +586,9 @@ export async function handleStats(): Promise<
   try {
     await embeddingService.warmup();
 
-    const userShards = shardManager.getAllShards("user", "");
+    
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     let userCount = 0;
     let projectCount = 0;
@@ -662,9 +631,9 @@ export async function handlePinMemory(id: string): Promise<ApiResponse<void>> {
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards("user", "");
+    
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     for (const shard of allShards) {
       const db = connectionManager.getConnection(shard.dbPath);
@@ -689,9 +658,9 @@ export async function handleUnpinMemory(id: string): Promise<ApiResponse<void>> 
       return { success: false, error: "id is required" };
     }
 
-    const userShards = shardManager.getAllShards("user", "");
+    
     const projectShards = shardManager.getAllShards("project", "");
-    const allShards = [...userShards, ...projectShards];
+    const allShards = [...projectShards];
 
     for (const shard of allShards) {
       const db = connectionManager.getConnection(shard.dbPath);
