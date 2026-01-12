@@ -26,7 +26,6 @@ interface OpenCodeMemConfig {
   embeddingApiKey?: string;
   similarityThreshold?: number;
   maxMemories?: number;
-  maxProjectMemories?: number;
   maxProfileItems?: number;
   injectProfile?: boolean;
   containerTagPrefix?: string;
@@ -47,7 +46,7 @@ interface OpenCodeMemConfig {
   autoCleanupRetentionDays?: number;
   deduplicationEnabled?: boolean;
   deduplicationSimilarityThreshold?: number;
-  userMemoryAnalysisInterval?: number;
+  userProfileAnalysisInterval?: number;
   userProfileMaxPreferences?: number;
   userProfileMaxPatterns?: number;
   userProfileMaxWorkflows?: number;
@@ -96,8 +95,7 @@ const DEFAULTS: Required<
   embeddingModel: "Xenova/nomic-embed-text-v1",
   embeddingDimensions: 768,
   similarityThreshold: 0.6,
-  maxMemories: 5,
-  maxProjectMemories: 10,
+  maxMemories: 10,
   maxProfileItems: 5,
   injectProfile: true,
   containerTagPrefix: "opencode",
@@ -114,7 +112,7 @@ const DEFAULTS: Required<
   autoCleanupRetentionDays: 30,
   deduplicationEnabled: true,
   deduplicationSimilarityThreshold: 0.9,
-  userMemoryAnalysisInterval: 10,
+  userProfileAnalysisInterval: 10,
   userProfileMaxPreferences: 20,
   userProfileMaxPatterns: 15,
   userProfileMaxWorkflows: 10,
@@ -267,18 +265,18 @@ const CONFIG_TEMPLATE = `{
   
   // Days to keep AI session history before cleanup
   "aiSessionRetentionDays": 7,
-  
+
   // ============================================
-  // User Memory Learning
+  // User Profile System
   // ============================================
-  
+
   // Analyze user prompts every N prompts to build/update your user profile
   // When N uncaptured prompts accumulate, AI will analyze them to identify:
   // - User preferences (code style, communication style, tool preferences)
   // - User patterns (recurring topics, problem domains, technical interests)
   // - User workflows (development habits, sequences, learning style)
   // - Skill level (overall and per-domain assessment)
-  "userMemoryAnalysisInterval": 10,
+  "userProfileAnalysisInterval": 10,
   
   // Maximum number of preferences to keep in user profile (sorted by confidence)
   // Preferences are things like "prefers code without comments", "likes concise responses"
@@ -306,13 +304,10 @@ const CONFIG_TEMPLATE = `{
   
   // Minimum similarity score (0-1) for memory search results
   "similarityThreshold": 0.6,
-  
-  // Maximum number of user-scoped memories to return in search
-  "maxMemories": 5,
-  
-  // Maximum number of project-scoped memories to return in search
-  "maxProjectMemories": 10,
-  
+
+  // Maximum number of memories to return in search results
+  "maxMemories": 10,
+
   // ============================================
   // Advanced Settings
   // ============================================
@@ -371,7 +366,6 @@ export const CONFIG = {
   embeddingApiKey: fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY,
   similarityThreshold: fileConfig.similarityThreshold ?? DEFAULTS.similarityThreshold,
   maxMemories: fileConfig.maxMemories ?? DEFAULTS.maxMemories,
-  maxProjectMemories: fileConfig.maxProjectMemories ?? DEFAULTS.maxProjectMemories,
   maxProfileItems: fileConfig.maxProfileItems ?? DEFAULTS.maxProfileItems,
   injectProfile: fileConfig.injectProfile ?? DEFAULTS.injectProfile,
   containerTagPrefix: fileConfig.containerTagPrefix ?? DEFAULTS.containerTagPrefix,
@@ -402,8 +396,8 @@ export const CONFIG = {
   deduplicationEnabled: fileConfig.deduplicationEnabled ?? DEFAULTS.deduplicationEnabled,
   deduplicationSimilarityThreshold:
     fileConfig.deduplicationSimilarityThreshold ?? DEFAULTS.deduplicationSimilarityThreshold,
-  userMemoryAnalysisInterval:
-    fileConfig.userMemoryAnalysisInterval ?? DEFAULTS.userMemoryAnalysisInterval,
+  userProfileAnalysisInterval:
+    fileConfig.userProfileAnalysisInterval ?? DEFAULTS.userProfileAnalysisInterval,
   userProfileMaxPreferences:
     fileConfig.userProfileMaxPreferences ?? DEFAULTS.userProfileMaxPreferences,
   userProfileMaxPatterns: fileConfig.userProfileMaxPatterns ?? DEFAULTS.userProfileMaxPatterns,

@@ -7,7 +7,7 @@ import { formatContextForPrompt } from "./services/context.js";
 import { getTags } from "./services/tags.js";
 import { stripPrivateContent, isFullyPrivate } from "./services/privacy.js";
 import { performAutoCapture } from "./services/auto-capture.js";
-import { performUserMemoryLearning } from "./services/user-memory-learning.js";
+import { performUserProfileLearning } from "./services/user-memory-learning.js";
 import { userPromptManager } from "./services/user-prompt/user-prompt-manager.js";
 import { startWebServer, WebServer } from "./services/web-server.js";
 
@@ -219,7 +219,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
           const projectMemoriesListResult = await memoryClient.listMemories(
             tags.project.tag,
-            CONFIG.maxProjectMemories
+            CONFIG.maxMemories
           );
 
           const projectMemoriesList = projectMemoriesListResult.success
@@ -536,7 +536,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           await performAutoCapture(ctx, sessionID, directory);
         }
 
-        await performUserMemoryLearning(ctx, directory);
+        await performUserProfileLearning(ctx, directory);
 
         const { cleanupService } = await import("./services/cleanup-service.js");
 

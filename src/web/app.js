@@ -286,9 +286,6 @@ async function loadStats() {
   const result = await fetchAPI("/api/stats");
   if (result.success) {
     document.getElementById("stats-total").textContent = `Total: ${result.data.total}`;
-    document.getElementById("stats-user").textContent = `User: ${result.data.byScope.user}`;
-    document.getElementById("stats-project").textContent =
-      `Project: ${result.data.byScope.project}`;
   }
 }
 
@@ -943,8 +940,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     state.currentPage = 1;
     loadMemories();
   });
-
-  document.getElementById("add-scope").addEventListener("change", handleAddScopeChange);
 
   document.getElementById("search-btn").addEventListener("click", performSearch);
   document.getElementById("clear-search-btn").addEventListener("click", clearSearch);

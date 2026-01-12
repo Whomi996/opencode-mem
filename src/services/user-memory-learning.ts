@@ -7,13 +7,13 @@ import type { UserPrompt } from "./user-prompt/user-prompt-manager.js";
 import { userProfileManager } from "./user-profile/user-profile-manager.js";
 import type { UserProfile, UserProfileData } from "./user-profile/types.js";
 
-export async function performUserMemoryLearning(
+export async function performUserProfileLearning(
   ctx: PluginInput,
   directory: string
 ): Promise<void> {
   try {
     const count = userPromptManager.countUnanalyzedForUserLearning();
-    const threshold = CONFIG.userMemoryAnalysisInterval;
+    const threshold = CONFIG.userProfileAnalysisInterval;
 
     if (count < threshold) {
       return;
