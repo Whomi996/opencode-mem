@@ -75,7 +75,12 @@ export async function performUserProfileLearning(
       })
       .catch(() => {});
   } catch (error) {
-    log("User memory learning error", { error: String(error) });
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    log("User memory learning error", {
+      error: String(error),
+      stack: errorStack,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+    });
 
     await ctx.client?.tui
       .showToast({

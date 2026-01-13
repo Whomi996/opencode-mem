@@ -2,6 +2,7 @@ import { BaseAIProvider, type ToolCallResult } from "./base-provider.js";
 import { AISessionManager } from "../session/ai-session-manager.js";
 import type { ChatCompletionTool } from "../tools/tool-schema.js";
 import { log } from "../../logger.js";
+import { UserProfileValidator } from "../validators/user-profile-validator.js";
 
 interface ToolCallResponse {
   choices: Array<{
@@ -165,12 +166,37 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           const toolCall = choice.message.tool_calls[0];
 
           if (toolCall && toolCall.function.name === toolSchema.function.name) {
-            const parsed = JSON.parse(toolCall.function.arguments);
-            return {
-              success: true,
-              data: this.validateResponse(parsed),
-              iterations,
-            };
+            try {
+              const parsed = JSON.parse(toolCall.function.arguments);
+              const result = UserProfileValidator.validate(parsed);
+              if (!result.valid) {
+                throw new Error(result.errors.join(", "));
+              }
+              return {
+                success: true,
+                data: result.data,
+                iterations,
+              };
+            } catch (validationError) {
+              const errorStack =
+                validationError instanceof Error ? validationError.stack : undefined;
+              log("OpenAI tool response validation failed", {
+                error: String(validationError),
+                stack: errorStack,
+                errorType:
+                  validationError instanceof Error
+                    ? validationError.constructor.name
+                    : typeof validationError,
+                toolName: toolSchema.function.name,
+                iteration: iterations,
+                rawArguments: toolCall.function.arguments.slice(0, 500),
+              });
+              return {
+                success: false,
+                error: `Validation failed: ${String(validationError)}`,
+                iterations,
+              };
+            }
           }
         }
 
@@ -208,28 +234,5 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
       error: `Max iterations (${this.config.maxIterations}) reached without tool call`,
       iterations,
     };
-  }
-
-  private validateResponse(data: any): any {
-    if (!data || typeof data !== "object") {
-      throw new Error("Response is not an object");
-    }
-
-    if (Array.isArray(data)) {
-      throw new Error("Response cannot be an array");
-    }
-
-    const keys = Object.keys(data);
-    if (keys.length === 0) {
-      throw new Error("Response object is empty");
-    }
-
-    for (const key of keys) {
-      if (data[key] === undefined || data[key] === null) {
-        throw new Error(`Response field '${key}' is null or undefined`);
-      }
-    }
-
-    return data;
   }
 }

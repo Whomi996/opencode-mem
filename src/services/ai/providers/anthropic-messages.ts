@@ -2,6 +2,7 @@ import { BaseAIProvider, type ToolCallResult } from "./base-provider.js";
 import { AISessionManager } from "../session/ai-session-manager.js";
 import { ToolSchemaConverter, type ChatCompletionTool } from "../tools/tool-schema.js";
 import { log } from "../../logger.js";
+import { UserProfileValidator } from "../validators/user-profile-validator.js";
 
 interface AnthropicMessage {
   role: "user" | "assistant";
@@ -148,11 +149,35 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
         const toolUse = this.extractToolUse(data, toolSchema.function.name);
 
         if (toolUse) {
-          return {
-            success: true,
-            data: this.validateResponse(toolUse),
-            iterations,
-          };
+          try {
+            const result = UserProfileValidator.validate(toolUse);
+            if (!result.valid) {
+              throw new Error(result.errors.join(", "));
+            }
+            return {
+              success: true,
+              data: result.data,
+              iterations,
+            };
+          } catch (validationError) {
+            const errorStack = validationError instanceof Error ? validationError.stack : undefined;
+            log("Anthropic tool response validation failed", {
+              error: String(validationError),
+              stack: errorStack,
+              errorType:
+                validationError instanceof Error
+                  ? validationError.constructor.name
+                  : typeof validationError,
+              toolName: toolSchema.function.name,
+              iteration: iterations,
+              rawData: JSON.stringify(toolUse).slice(0, 500),
+            });
+            return {
+              success: false,
+              error: `Validation failed: ${String(validationError)}`,
+              iterations,
+            };
+          }
         }
 
         if (data.stop_reason === "end_turn") {
@@ -207,28 +232,5 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
     }
 
     return null;
-  }
-
-  private validateResponse(data: any): any {
-    if (!data || typeof data !== "object") {
-      throw new Error("Response is not an object");
-    }
-
-    if (Array.isArray(data)) {
-      throw new Error("Response cannot be an array");
-    }
-
-    const keys = Object.keys(data);
-    if (keys.length === 0) {
-      throw new Error("Response object is empty");
-    }
-
-    for (const key of keys) {
-      if (data[key] === undefined || data[key] === null) {
-        throw new Error(`Response field '${key}' is null or undefined`);
-      }
-    }
-
-    return data;
   }
 }

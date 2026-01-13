@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { connectionManager } from "../sqlite/connection-manager.js";
 import { CONFIG } from "../../config.js";
 import type { UserProfile, UserProfileChangelog, UserProfileData } from "./types.js";
+import { safeArray, safeObject } from "./profile-utils.js";
 
 const USER_PROFILES_DB_NAME = "user-profiles.db";
 
@@ -267,10 +268,10 @@ export class UserProfileManager {
 
   mergeProfileData(existing: UserProfileData, updates: Partial<UserProfileData>): UserProfileData {
     const merged: UserProfileData = {
-      preferences: [...existing.preferences],
-      patterns: [...existing.patterns],
-      workflows: [...existing.workflows],
-      skillLevel: { ...existing.skillLevel },
+      preferences: safeArray(existing?.preferences),
+      patterns: safeArray(existing?.patterns),
+      workflows: safeArray(existing?.workflows),
+      skillLevel: safeObject(existing?.skillLevel, { overall: "intermediate", domains: {} }),
     };
 
     if (updates.preferences) {
@@ -285,7 +286,9 @@ export class UserProfileManager {
             merged.preferences[existingIndex] = {
               ...newPref,
               confidence: Math.min(1, existing.confidence + 0.1),
-              evidence: [...new Set([...existing.evidence, ...newPref.evidence])].slice(0, 5),
+              evidence: [
+                ...new Set([...safeArray(existing.evidence), ...safeArray(newPref.evidence)]),
+              ].slice(0, 5),
               lastUpdated: Date.now(),
             };
           }
@@ -348,7 +351,7 @@ export class UserProfileManager {
     if (updates.skillLevel) {
       merged.skillLevel = {
         overall: updates.skillLevel.overall || merged.skillLevel.overall,
-        domains: { ...merged.skillLevel.domains, ...updates.skillLevel.domains },
+        domains: { ...merged.skillLevel.domains, ...safeObject(updates.skillLevel.domains, {}) },
       };
     }
 
