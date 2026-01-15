@@ -2,7 +2,6 @@ import { describe, it, expect } from "bun:test";
 import { getProjectName } from "../src/services/tags.js";
 import { dirname } from "node:path";
 import { join } from "node:path";
-import * as fs from "node:fs";
 
 describe("Windows Path Handling", () => {
   describe("getProjectName", () => {

@@ -78,7 +78,7 @@ export class ConnectionManager {
     this.sqliteConfigured = true;
   }
 
-  private initDatabase(db: Database): void {
+private initDatabase(db: Database): void {
     db.run("PRAGMA journal_mode = WAL");
     db.run("PRAGMA synchronous = NORMAL");
     db.run("PRAGMA cache_size = -64000");
@@ -99,7 +99,7 @@ export class ConnectionManager {
     }
   }
 
-getConnection(dbPath: string): Database {
+  getConnection(dbPath: string): Database {
     if (this.connections.has(dbPath)) {
       return this.connections.get(dbPath)!;
     }
