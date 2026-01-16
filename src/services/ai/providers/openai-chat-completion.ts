@@ -37,6 +37,27 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
     return true;
   }
 
+  private addToolResponse(
+    sessionId: string,
+    messages: any[],
+    toolCallId: string,
+    content: string
+  ): void {
+    const sequence = this.aiSessionManager.getLastSequence(sessionId) + 1;
+    this.aiSessionManager.addMessage({
+      aiSessionId: sessionId,
+      sequence,
+      role: "tool",
+      content,
+      toolCallId,
+    });
+    messages.push({
+      role: "tool",
+      tool_call_id: toolCallId,
+      content,
+    });
+  }
+
   private filterIncompleteToolCallSequences(messages: any[]): any[] {
     const result: any[] = [];
     let i = 0;
@@ -207,80 +228,70 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
         messages.push(choice.message);
 
         if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
-          const toolCall = choice.message.tool_calls[0];
-          if (!toolCall) continue;
+          for (const toolCall of choice.message.tool_calls) {
+            const toolCallId = toolCall.id;
 
-          const toolCallId = toolCall.id;
+            if (toolCall.function.name === toolSchema.function.name) {
+              try {
+                const parsed = JSON.parse(toolCall.function.arguments);
+                const result = UserProfileValidator.validate(parsed);
+                if (!result.valid) {
+                  throw new Error(result.errors.join(", "));
+                }
 
-          if (toolCall.function.name === toolSchema.function.name) {
-            try {
-              const parsed = JSON.parse(toolCall.function.arguments);
-              const result = UserProfileValidator.validate(parsed);
-              if (!result.valid) {
-                throw new Error(result.errors.join(", "));
+                this.addToolResponse(
+                  session.id,
+                  messages,
+                  toolCallId,
+                  JSON.stringify({ success: true })
+                );
+
+                return {
+                  success: true,
+                  data: result.data,
+                  iterations,
+                };
+              } catch (validationError) {
+                const errorStack =
+                  validationError instanceof Error ? validationError.stack : undefined;
+                log("OpenAI tool response validation failed", {
+                  error: String(validationError),
+                  stack: errorStack,
+                  errorType:
+                    validationError instanceof Error
+                      ? validationError.constructor.name
+                      : typeof validationError,
+                  toolName: toolSchema.function.name,
+                  iteration: iterations,
+                  rawArguments: toolCall.function.arguments.slice(0, 500),
+                });
+
+                const errorMessage = `Validation failed: ${String(validationError)}`;
+                this.addToolResponse(
+                  session.id,
+                  messages,
+                  toolCallId,
+                  JSON.stringify({ success: false, error: errorMessage })
+                );
+
+                return {
+                  success: false,
+                  error: errorMessage,
+                  iterations,
+                };
               }
-
-              const toolResponseSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
-              this.aiSessionManager.addMessage({
-                aiSessionId: session.id,
-                sequence: toolResponseSequence,
-                role: "tool",
-                content: JSON.stringify({ success: true }),
-                toolCallId,
-              });
-
-              return {
-                success: true,
-                data: result.data,
-                iterations,
-              };
-            } catch (validationError) {
-              const errorStack =
-                validationError instanceof Error ? validationError.stack : undefined;
-              log("OpenAI tool response validation failed", {
-                error: String(validationError),
-                stack: errorStack,
-                errorType:
-                  validationError instanceof Error
-                    ? validationError.constructor.name
-                    : typeof validationError,
-                toolName: toolSchema.function.name,
-                iteration: iterations,
-                rawArguments: toolCall.function.arguments.slice(0, 500),
-              });
-
-              const toolErrorSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
-              const errorMessage = `Validation failed: ${String(validationError)}`;
-              this.aiSessionManager.addMessage({
-                aiSessionId: session.id,
-                sequence: toolErrorSequence,
-                role: "tool",
-                content: JSON.stringify({ success: false, error: errorMessage }),
-                toolCallId,
-              });
-
-              return {
-                success: false,
-                error: errorMessage,
-                iterations,
-              };
             }
-          }
 
-          const toolResponseSequence = this.aiSessionManager.getLastSequence(session.id) + 1;
-          const wrongToolMessage = `Wrong tool called. Please use ${toolSchema.function.name} instead.`;
-          this.aiSessionManager.addMessage({
-            aiSessionId: session.id,
-            sequence: toolResponseSequence,
-            role: "tool",
-            content: JSON.stringify({ success: false, error: wrongToolMessage }),
-            toolCallId,
-          });
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCallId,
-            content: JSON.stringify({ success: false, error: wrongToolMessage }),
-          });
+            const wrongToolMessage = `Wrong tool called. Please use ${toolSchema.function.name} instead.`;
+            this.addToolResponse(
+              session.id,
+              messages,
+              toolCallId,
+              JSON.stringify({ success: false, error: wrongToolMessage })
+            );
+
+            break;
+          }
         }
 
         const retrySequence = this.aiSessionManager.getLastSequence(session.id) + 1;
