@@ -109,12 +109,17 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           temperature: 0.3,
         };
 
+const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+
+        if (this.config.apiKey) {
+          headers.Authorization = `Bearer ${this.config.apiKey}`;
+        }
+
         const response = await fetch(`${this.config.apiUrl}/chat/completions`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.config.apiKey}`,
-          },
+          headers,
           body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
