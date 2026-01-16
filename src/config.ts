@@ -384,7 +384,7 @@ export const CONFIG = {
   embeddingDimensions:
     fileConfig.embeddingDimensions ??
     getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
-embeddingApiUrl: fileConfig.embeddingApiUrl,
+  embeddingApiUrl: fileConfig.embeddingApiUrl,
   embeddingApiKey: fileConfig.embeddingApiUrl
     ? (fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY)
     : undefined,

@@ -84,7 +84,7 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
 
     messages.push({ role: "user", content: userPrompt });
 
-let iterations = 0;
+    let iterations = 0;
     const maxIterations = this.config.maxIterations ?? 5;
     const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
@@ -104,7 +104,7 @@ let iterations = 0;
           tools: [tool],
         };
 
-const headers: Record<string, string> = {
+        const headers: Record<string, string> = {
           "Content-Type": "application/json",
           "anthropic-version": "2023-06-01",
         };

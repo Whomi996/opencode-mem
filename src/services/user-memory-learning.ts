@@ -163,6 +163,11 @@ async function analyzeUserProfile(
   existingProfile: UserProfile | null
 ): Promise<UserProfileData | null> {
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl) {
+    log("User Profile Config Check Failed:", {
+      memoryModel: CONFIG.memoryModel,
+      memoryApiUrl: CONFIG.memoryApiUrl,
+      memoryApiKey: CONFIG.memoryApiKey,
+    });
     throw new Error("External API not configured for user memory learning");
   }
 

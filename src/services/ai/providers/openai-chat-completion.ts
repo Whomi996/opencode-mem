@@ -92,7 +92,7 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
 
     messages.push({ role: "user", content: userPrompt });
 
-let iterations = 0;
+    let iterations = 0;
     const maxIterations = this.config.maxIterations ?? 5;
     const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
@@ -111,7 +111,7 @@ let iterations = 0;
           temperature: 0.3,
         };
 
-const headers: Record<string, string> = {
+        const headers: Record<string, string> = {
           "Content-Type": "application/json",
         };
 

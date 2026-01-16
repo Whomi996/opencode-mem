@@ -53,7 +53,7 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       });
     }
 
-let conversationId = session.conversationId;
+    let conversationId = session.conversationId;
     let currentPrompt = userPrompt;
     let iterations = 0;
     const maxIterations = this.config.maxIterations ?? 5;
