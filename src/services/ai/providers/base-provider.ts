@@ -8,9 +8,9 @@ export interface ToolCallResult {
 export interface ProviderConfig {
   model: string;
   apiUrl: string;
-  apiKey: string;
-  maxIterations: number;
-  iterationTimeout: number;
+  apiKey?: string;
+  maxIterations?: number;
+  iterationTimeout?: number;
 }
 
 export abstract class BaseAIProvider {

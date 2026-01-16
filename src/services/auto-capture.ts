@@ -236,7 +236,7 @@ async function generateSummary(
   context: string,
   sessionID: string
 ): Promise<{ summary: string; type: string } | null> {
-  if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl || !CONFIG.memoryApiKey) {
+  if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl) {
     throw new Error("External API not configured for auto-capture");
   }
 

@@ -85,13 +85,14 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
     messages.push({ role: "user", content: userPrompt });
 
     let iterations = 0;
-    const maxIterations = this.config.maxIterations;
+    const maxIterations = this.config.maxIterations ?? 5;
+    const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
     while (iterations < maxIterations) {
       iterations++;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.iterationTimeout);
+      const timeout = setTimeout(() => controller.abort(), iterationTimeout);
 
       try {
         const tool = ToolSchemaConverter.toAnthropic(toolSchema);
@@ -103,13 +104,18 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
           tools: [tool],
         };
 
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+        };
+
+        if (this.config.apiKey) {
+          headers["x-api-key"] = this.config.apiKey;
+        }
+
         const response = await fetch(`${this.config.apiUrl}/messages`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": this.config.apiKey,
-            "anthropic-version": "2023-06-01",
-          },
+          headers,
           body: JSON.stringify(requestBody),
           signal: controller.signal,
         });

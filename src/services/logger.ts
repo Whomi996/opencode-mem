@@ -12,7 +12,9 @@ function ensureLoggerInitialized() {
   if (!existsSync(LOG_DIR)) {
     mkdirSync(LOG_DIR, { recursive: true });
   }
-  writeFileSync(LOG_FILE, `\n--- Session started: ${new Date().toISOString()} ---\n`, { flag: "a" });
+  writeFileSync(LOG_FILE, `\n--- Session started: ${new Date().toISOString()} ---\n`, {
+    flag: "a",
+  });
   (globalThis as any)[GLOBAL_LOGGER_KEY] = true;
 }
 

@@ -158,12 +158,14 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
     messages.push({ role: "user", content: userPrompt });
 
     let iterations = 0;
+    const maxIterations = this.config.maxIterations ?? 5;
+    const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
-    while (iterations < this.config.maxIterations) {
+    while (iterations < maxIterations) {
       iterations++;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.iterationTimeout);
+      const timeout = setTimeout(() => controller.abort(), iterationTimeout);
 
       try {
         const requestBody = {
@@ -174,12 +176,17 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           temperature: 0.3,
         };
 
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+
+        if (this.config.apiKey) {
+          headers.Authorization = `Bearer ${this.config.apiKey}`;
+        }
+
         const response = await fetch(`${this.config.apiUrl}/chat/completions`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.config.apiKey}`,
-          },
+          headers,
           body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
