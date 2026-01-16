@@ -53,15 +53,17 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
       });
     }
 
-    let conversationId = session.conversationId;
+let conversationId = session.conversationId;
     let currentPrompt = userPrompt;
     let iterations = 0;
+    const maxIterations = this.config.maxIterations ?? 5;
+    const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
-    while (iterations < this.config.maxIterations) {
+    while (iterations < maxIterations) {
       iterations++;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.iterationTimeout);
+      const timeout = setTimeout(() => controller.abort(), iterationTimeout);
 
       try {
         const tool = ToolSchemaConverter.toResponsesAPI(toolSchema);

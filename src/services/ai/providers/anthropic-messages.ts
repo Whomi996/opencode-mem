@@ -84,14 +84,15 @@ export class AnthropicMessagesProvider extends BaseAIProvider {
 
     messages.push({ role: "user", content: userPrompt });
 
-    let iterations = 0;
-    const maxIterations = this.config.maxIterations;
+let iterations = 0;
+    const maxIterations = this.config.maxIterations ?? 5;
+    const iterationTimeout = this.config.iterationTimeout ?? 30000;
 
     while (iterations < maxIterations) {
       iterations++;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), this.config.iterationTimeout);
+      const timeout = setTimeout(() => controller.abort(), iterationTimeout);
 
       try {
         const tool = ToolSchemaConverter.toAnthropic(toolSchema);
