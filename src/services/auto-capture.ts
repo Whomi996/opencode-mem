@@ -259,23 +259,30 @@ RULES:
 2. SKIP non-technical by returning type="skip"
 3. NO meta-commentary or behavior analysis
 4. Include specific file names, functions, technical details
+5. DETECT the language used by the user. You MUST write the summary and reasoning in that SAME language.
 
 FORMAT:
 ## Request
-[1-2 sentences: what was requested]
+[1-2 sentences: what was requested, in user's language]
 
 ## Outcome
-[1-2 sentences: what was done, include files/functions]
+[1-2 sentences: what was done, include files/functions, in user's language]
 
 SKIP if: greetings, casual chat, no code/decisions made
 CAPTURE if: code changed, bug fixed, feature added, decision made
 
 EXAMPLES:
-Technical → type="feature":
+Technical (English) → type="feature":
 ## Request
 Fix function returning null.
 ## Outcome
 Changed searchMemories() to listMemories() in auto-capture.ts:166.
+
+Technical (Indonesian) → type="feature":
+## Request
+Perbaiki fungsi yang mengembalikan null.
+## Outcome
+Mengubah searchMemories() menjadi listMemories() di auto-capture.ts:166.
 
 Non-technical → type="skip", summary="":
 User greeted, AI introduced capabilities.`;

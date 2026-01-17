@@ -151,10 +151,6 @@ Identify and ${existingProfile ? "update" : "create"}:
    - Development sequences, habits, learning style
    - Break down into steps if applicable
 
-4. **Skill Level**
-   - Overall: beginner/intermediate/advanced
-   - Per-domain assessment (e.g., typescript: advanced, docker: beginner)
-
 ${existingProfile ? "Merge with existing profile, incrementing frequencies and updating confidence scores." : "Create initial profile with conservative confidence scores."}`;
 }
 
@@ -186,6 +182,8 @@ async function analyzeUserProfile(
   const systemPrompt = `You are a user behavior analyst for a coding assistant.
 
 Your task is to analyze user prompts and ${existingProfile ? "update" : "create"} a comprehensive user profile.
+
+CRITICAL: Detect the language used by the user. You MUST output all descriptions and text in the SAME language as the user's prompts.
 
 Use the update_user_profile tool to save the ${existingProfile ? "updated" : "new"} profile.`;
 
@@ -234,16 +232,8 @@ Use the update_user_profile tool to save the ${existingProfile ? "updated" : "ne
               required: ["description", "steps"],
             },
           },
-          skillLevel: {
-            type: "object",
-            properties: {
-              overall: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
-              domains: { type: "object", additionalProperties: { type: "string" } },
-            },
-            required: ["overall", "domains"],
-          },
         },
-        required: ["preferences", "patterns", "workflows", "skillLevel"],
+        required: ["preferences", "patterns", "workflows"],
       },
     },
   };

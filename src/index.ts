@@ -18,32 +18,9 @@ import type { MemoryScope, MemoryType } from "./types/index.js";
 const CODE_BLOCK_PATTERN = /```[\s\S]*?```/g;
 const INLINE_CODE_PATTERN = /`[^`]+`/g;
 
-const MEMORY_KEYWORD_PATTERN = new RegExp(`\\b(${CONFIG.keywordPatterns.join("|")})\\b`, "i");
-
-const MEMORY_NUDGE_MESSAGE = `[MEMORY TRIGGER DETECTED]
-The user wants you to remember something. You MUST use the \`memory\` tool with \`mode: "add"\` to save this information.
-
-Extract the key information the user wants remembered and save it as a concise, searchable memory.
-- Use \`scope: "project"\` for project-specific knowledge (e.g., "run lint with tests", architecture decisions)
-- Choose an appropriate \`type\`: "preference", "project-config", "learned-pattern", etc.
-
-Note: User preferences are automatically learned through the user profile system. Only store project-specific information.
-
-DO NOT skip this step. The user explicitly asked you to remember.`;
-
-function removeCodeBlocks(text: string): string {
-  return text.replace(CODE_BLOCK_PATTERN, "").replace(INLINE_CODE_PATTERN, "");
-}
-
-function detectMemoryKeyword(text: string): boolean {
-  const textWithoutCode = removeCodeBlocks(text);
-  return MEMORY_KEYWORD_PATTERN.test(textWithoutCode);
-}
-
 export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   const tags = getTags(directory);
-  const injectedSessions = new Set<string>();
   let webServer: WebServer | null = null;
 
   if (!isConfigured()) {
@@ -153,58 +130,46 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
 
         userPromptManager.savePrompt(input.sessionID, output.message.id, directory, userMessage);
 
-        if (detectMemoryKeyword(userMessage)) {
-          const nudgePart: Part = {
-            id: `memory-nudge-${Date.now()}`,
-            sessionID: input.sessionID,
-            messageID: output.message.id,
-            type: "text",
-            text: MEMORY_NUDGE_MESSAGE,
-            synthetic: true,
-          };
-          output.parts.push(nudgePart);
-        }
+        const searchResult = await memoryClient.searchMemories(userMessage, tags.project.tag);
 
-        const isFirstMessage = !injectedSessions.has(input.sessionID);
+        if (searchResult.success && searchResult.results.length > 0) {
+          const relevantMemories = searchResult.results
+            .filter((m: any) => {
+              const memorySessionId = m.metadata?.sessionID;
+              const isFromOtherSession = memorySessionId !== input.sessionID;
+              const isRelevant = m.similarity > 0.65;
+              return isFromOtherSession && isRelevant;
+            })
+            .slice(0, 3);
 
-        if (isFirstMessage) {
-          injectedSessions.add(input.sessionID);
-
-          const projectMemoriesListResult = await memoryClient.listMemories(
-            tags.project.tag,
-            CONFIG.maxMemories
-          );
-
-          const projectMemoriesList = projectMemoriesListResult.success
-            ? projectMemoriesListResult
-            : { memories: [] };
-
-          const projectMemories = {
-            results: (projectMemoriesList.memories || []).map((m: any) => ({
-              id: m.id,
-              memory: m.summary,
-              similarity: 1,
-              title: m.title,
-              metadata: m.metadata,
-            })),
-            total: projectMemoriesList.memories?.length || 0,
-            timing: 0,
-          };
-
-          const userId = tags.user.userEmail || null;
-          const memoryContext = formatContextForPrompt(userId, projectMemories);
-
-          if (memoryContext) {
-            const contextPart: Part = {
-              id: `memory-context-${Date.now()}`,
-              sessionID: input.sessionID,
-              messageID: output.message.id,
-              type: "text",
-              text: memoryContext,
-              synthetic: true,
+          if (relevantMemories.length > 0) {
+            const projectMemories = {
+              results: relevantMemories.map((m: any) => ({
+                id: m.id,
+                memory: m.memory,
+                similarity: m.similarity,
+                title: m.displayName,
+                metadata: m.metadata,
+              })),
+              total: relevantMemories.length,
+              timing: 0,
             };
 
-            output.parts.unshift(contextPart);
+            const userId = tags.user.userEmail || null;
+            const memoryContext = formatContextForPrompt(userId, projectMemories);
+
+            if (memoryContext) {
+              const contextPart: Part = {
+                id: `memory-context-${Date.now()}`,
+                sessionID: input.sessionID,
+                messageID: output.message.id,
+                type: "text",
+                text: memoryContext,
+                synthetic: true,
+              };
+
+              output.parts.unshift(contextPart);
+            }
           }
         }
       } catch (error) {
@@ -228,11 +193,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     tool: {
       memory: tool({
         description:
-          "Manage and query the local persistent memory system. Use 'search' to find relevant memories, 'add' to store new knowledge, 'profile' to view user profile, 'list' to see recent memories, 'forget' to remove a memory.",
+          "Manage and query local persistent memory. Use 'search' to find relevant memories, 'add' to store new knowledge (MATCH USER LANGUAGE), 'profile' to view user preferences, 'list' to see recent memories, 'forget' to remove a memory.",
         args: {
-          mode: tool.schema
-            .enum(["add", "search", "profile", "list", "forget", "help", "capture-now"])
-            .optional(),
+          mode: tool.schema.enum(["add", "search", "profile", "list", "forget", "help"]).optional(),
           content: tool.schema.string().optional(),
           query: tool.schema.string().optional(),
           type: tool.schema.string().optional(),
@@ -276,12 +239,12 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   commands: [
                     {
                       command: "add",
-                      description: "Store a new project memory",
+                      description: "Store a new project memory (MATCH USER LANGUAGE)",
                       args: ["content", "type?"],
                     },
                     {
                       command: "search",
-                      description: "Search project memories",
+                      description: "Search project memories (MATCH USER LANGUAGE)",
                       args: ["query"],
                     },
                     {
@@ -298,11 +261,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                       command: "forget",
                       description: "Remove a project memory",
                       args: ["memoryId"],
-                    },
-                    {
-                      command: "capture-now",
-                      description: "Manually trigger memory capture for current session",
-                      args: [],
                     },
                   ],
                   note: "User preferences are automatically learned through the user profile system. Only project-specific memories can be added manually.",
@@ -448,15 +406,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                 return JSON.stringify({
                   success: true,
                   message: `Memory ${args.memoryId} removed`,
-                });
-              }
-
-              case "capture-now": {
-                const sessionID = toolCtx.sessionID;
-                await performAutoCapture(ctx, sessionID, directory);
-                return JSON.stringify({
-                  success: true,
-                  message: "Manual capture triggered",
                 });
               }
 

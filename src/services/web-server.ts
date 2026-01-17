@@ -89,10 +89,10 @@ export class WebServer {
             type: error.type || "error",
           };
           log("Web server worker error (detailed)", errorDetails);
-          
-          const errorMsg = error.message 
+
+          const errorMsg = error.message
             ? `${error.message} (at ${error.filename}:${error.lineno}:${error.colno})`
-            : error.error 
+            : error.error
               ? String(error.error)
               : `Worker failed: ${JSON.stringify(errorDetails)}`;
           reject(new Error(errorMsg));

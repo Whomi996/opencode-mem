@@ -19,16 +19,10 @@ export interface UserProfileWorkflow {
   frequency: number;
 }
 
-export interface UserProfileSkillLevel {
-  overall: string;
-  domains: Record<string, string>;
-}
-
 export interface UserProfileData {
   preferences: UserProfilePreference[];
   patterns: UserProfilePattern[];
   workflows: UserProfileWorkflow[];
-  skillLevel: UserProfileSkillLevel;
 }
 
 export interface UserProfile {
