@@ -723,129 +723,130 @@ function renderUserProfile() {
   const preferences = data.preferences || [];
   const patterns = data.patterns || [];
   const workflows = data.workflows || [];
-  const skillLevel = data.skillLevel || {};
 
   container.innerHTML = `
     <div class="profile-header">
       <div class="profile-info">
         <h3>${profile.displayName || profile.userId}</h3>
-        <p class="profile-meta">
-          <span>Version: ${profile.version}</span>
-          <span class="separator">|</span>
-          <span>Analyzed: ${profile.totalPromptsAnalyzed} prompts</span>
-          <span class="separator">|</span>
-          <span>Updated: ${formatDate(profile.lastAnalyzedAt)}</span>
-        </p>
+        <div class="profile-stats">
+          <div class="stat-pill">
+            <span class="label">VERSION</span>
+            <span class="value">${profile.version}</span>
+          </div>
+          <div class="stat-pill">
+            <span class="label">PROMPTS</span>
+            <span class="value">${profile.totalPromptsAnalyzed}</span>
+          </div>
+          <div class="stat-pill">
+            <span class="label">LAST UPDATED</span>
+            <span class="value">${formatDate(profile.lastAnalyzedAt)}</span>
+          </div>
+        </div>
       </div>
-      <button id="view-changelog-btn" class="btn-secondary">
-        <i data-lucide="history" class="icon"></i> Version History
+      <button id="view-changelog-btn" class="btn-secondary compact">
+        <i data-lucide="history" class="icon"></i> History
       </button>
     </div>
 
-    <div class="profile-section">
-      <h4><i data-lucide="heart" class="icon"></i> Preferences (${preferences.length})</h4>
-      ${
-        preferences.length === 0
-          ? '<p class="empty-text">No preferences learned yet</p>'
-          : `
-        <div class="preferences-list">
-          ${preferences
-            .map(
-              (p) => `
-            <div class="preference-item">
-              <div class="preference-header">
-                <span class="preference-name">${escapeHtml(p.description)}</span>
-                <span class="confidence-badge">${Math.round(p.confidence * 100)}%</span>
-              </div>
-              <div class="confidence-bar">
-                <div class="confidence-fill" style="width: ${p.confidence * 100}%"></div>
-              </div>
-              <p class="preference-evidence">${escapeHtml(Array.isArray(p.evidence) ? p.evidence.join(", ") : p.evidence)}</p>
-              <p class="preference-meta">Category: ${escapeHtml(p.category)}</p>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `
-      }
-    </div>
-
-    <div class="profile-section">
-      <h4><i data-lucide="activity" class="icon"></i> Patterns (${patterns.length})</h4>
-      ${
-        patterns.length === 0
-          ? '<p class="empty-text">No patterns detected yet</p>'
-          : `
-        <div class="patterns-list">
-          ${patterns
-            .map(
-              (p) => `
-            <div class="pattern-item">
-              <div class="pattern-header">
-                <span class="pattern-name">${escapeHtml(p.description)}</span>
-                <span class="category-badge">${escapeHtml(p.category)}</span>
-              </div>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `
-      }
-    </div>
-
-    <div class="profile-section">
-      <h4><i data-lucide="workflow" class="icon"></i> Workflows (${workflows.length})</h4>
-      ${
-        workflows.length === 0
-          ? '<p class="empty-text">No workflows identified yet</p>'
-          : `
-        <div class="workflows-list">
-          ${workflows
-            .map(
-              (w) => `
-            <div class="workflow-item">
-              <div class="workflow-header">
-                <span class="workflow-name">${escapeHtml(w.description)}</span>
-              </div>
-              <div class="workflow-steps">
-                ${w.steps
-                  .map(
-                    (step) => `
-                  <div class="workflow-step">
-                    <span class="step-text">${escapeHtml(step)}</span>
+    <div class="dashboard-grid">
+      <div class="dashboard-section preferences-section">
+        <h4><i data-lucide="heart" class="icon"></i> PREFERENCES <span class="count">${preferences.length}</span></h4>
+        ${
+          preferences.length === 0
+            ? '<p class="empty-text">No preferences learned yet</p>'
+            : `
+          <div class="cards-grid">
+            ${preferences
+              .sort((a, b) => b.confidence - a.confidence)
+              .map(
+                (p) => `
+              <div class="compact-card preference-card">
+                <div class="card-top">
+                  <span class="category-tag">${escapeHtml(p.category)}</span>
+                  <div class="confidence-ring" style="--p:${Math.round(p.confidence * 100)}">
+                    <span>${Math.round(p.confidence * 100)}%</span>
                   </div>
-                `
-                  )
-                  .join("")}
+                </div>
+                <div class="card-body">
+                  <p class="card-text">${escapeHtml(p.description)}</p>
+                </div>
+                ${
+                  p.evidence && p.evidence.length > 0
+                    ? `
+                <div class="card-footer">
+                  <span class="evidence-toggle" title="${escapeHtml(Array.isArray(p.evidence) ? p.evidence.join("\n") : p.evidence)}">
+                    <i data-lucide="info" class="icon-xs"></i> ${Array.isArray(p.evidence) ? p.evidence.length : 1} evidence
+                  </span>
+                </div>`
+                    : ""
+                }
               </div>
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `
-      }
-    </div>
-
-    <div class="profile-section">
-      <h4><i data-lucide="award" class="icon"></i> Skill Level</h4>
-      <div class="skill-level">
-        <div class="skill-item">
-          <span class="skill-label">Overall</span>
-          <span class="skill-value">${escapeHtml(skillLevel.overall || "unknown")}</span>
-        </div>
-        ${Object.entries(skillLevel.domains || {})
-          .map(
-            ([domain, level]) => `
-          <div class="skill-item">
-            <span class="skill-label">${escapeHtml(domain)}</span>
-            <span class="skill-value">${escapeHtml(level)}</span>
+            `
+              )
+              .join("")}
           </div>
         `
-          )
-          .join("")}
+        }
+      </div>
+
+      <div class="dashboard-section patterns-section">
+        <h4><i data-lucide="activity" class="icon"></i> PATTERNS <span class="count">${patterns.length}</span></h4>
+        ${
+          patterns.length === 0
+            ? '<p class="empty-text">No patterns detected yet</p>'
+            : `
+          <div class="cards-grid">
+            ${patterns
+              .map(
+                (p) => `
+              <div class="compact-card pattern-card">
+                <div class="card-top">
+                  <span class="category-tag">${escapeHtml(p.category)}</span>
+                </div>
+                <div class="card-body">
+                  <p class="card-text">${escapeHtml(p.description)}</p>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `
+        }
+      </div>
+
+      <div class="dashboard-section workflows-section full-width">
+        <h4><i data-lucide="workflow" class="icon"></i> WORKFLOWS <span class="count">${workflows.length}</span></h4>
+        ${
+          workflows.length === 0
+            ? '<p class="empty-text">No workflows identified yet</p>'
+            : `
+          <div class="workflows-grid">
+            ${workflows
+              .map(
+                (w) => `
+              <div class="workflow-row">
+                <div class="workflow-title">${escapeHtml(w.description)}</div>
+                <div class="workflow-steps-horizontal">
+                  ${w.steps
+                    .map(
+                      (step, i) => `
+                    <div class="step-node">
+                      <span class="step-idx">${i + 1}</span>
+                      <span class="step-content">${escapeHtml(step)}</span>
+                    </div>
+                    ${i < w.steps.length - 1 ? '<i data-lucide="arrow-right" class="step-arrow"></i>' : ""}
+                  `
+                    )
+                    .join("")}
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `
+        }
       </div>
     </div>
   `;

@@ -15,9 +15,6 @@ import { isConfigured, CONFIG } from "./config.js";
 import { log } from "./services/logger.js";
 import type { MemoryScope, MemoryType } from "./types/index.js";
 
-const CODE_BLOCK_PATTERN = /```[\s\S]*?```/g;
-const INLINE_CODE_PATTERN = /`[^`]+`/g;
-
 export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   const tags = getTags(directory);

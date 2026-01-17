@@ -271,7 +271,6 @@ export class UserProfileManager {
       preferences: safeArray(existing?.preferences),
       patterns: safeArray(existing?.patterns),
       workflows: safeArray(existing?.workflows),
-      skillLevel: safeObject(existing?.skillLevel, { overall: "intermediate", domains: {} }),
     };
 
     if (updates.preferences) {
@@ -346,13 +345,6 @@ export class UserProfileManager {
 
       merged.workflows.sort((a, b) => b.frequency - a.frequency);
       merged.workflows = merged.workflows.slice(0, CONFIG.userProfileMaxWorkflows);
-    }
-
-    if (updates.skillLevel) {
-      merged.skillLevel = {
-        overall: updates.skillLevel.overall || merged.skillLevel.overall,
-        domains: { ...merged.skillLevel.domains, ...safeObject(updates.skillLevel.domains, {}) },
-      };
     }
 
     return merged;

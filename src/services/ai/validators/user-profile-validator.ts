@@ -39,10 +39,6 @@ export class UserProfileValidator {
       const workflowErrors = this.validateWorkflows(data.workflows);
       errors.push(...workflowErrors);
     }
-    if (data.skillLevel) {
-      const skillErrors = this.validateSkillLevel(data.skillLevel);
-      errors.push(...skillErrors);
-    }
     if (errors.length > 0) {
       return { valid: false, errors };
     }
@@ -118,20 +114,6 @@ export class UserProfileValidator {
       } else if (workflow.steps.length === 0) {
         errors.push(`workflows[${i}].steps cannot be empty`);
       }
-    }
-    return errors;
-  }
-
-  private static validateSkillLevel(skillLevel: any): string[] {
-    const errors: string[] = [];
-    if (typeof skillLevel !== "object") {
-      return ["skillLevel must be an object"];
-    }
-    if (!skillLevel.overall || typeof skillLevel.overall !== "string") {
-      errors.push("skillLevel.overall is missing or invalid");
-    }
-    if (!skillLevel.domains || typeof skillLevel.domains !== "object") {
-      errors.push("skillLevel.domains must be an object");
     }
     return errors;
   }

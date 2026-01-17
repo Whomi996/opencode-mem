@@ -30,7 +30,6 @@ interface OpenCodeMemConfig {
   maxProfileItems?: number;
   injectProfile?: boolean;
   containerTagPrefix?: string;
-  keywordPatterns?: string[];
   autoCaptureEnabled?: boolean;
   autoCaptureMaxIterations?: number;
   autoCaptureIterationTimeout?: number;
@@ -54,25 +53,6 @@ interface OpenCodeMemConfig {
   userProfileConfidenceDecayDays?: number;
   userProfileChangelogRetentionCount?: number;
 }
-
-const DEFAULT_KEYWORD_PATTERNS = [
-  "remember",
-  "memorize",
-  "save\\s+this",
-  "note\\s+this",
-  "keep\\s+in\\s+mind",
-  "don'?t\\s+forget",
-  "learn\\s+this",
-  "store\\s+this",
-  "record\\s+this",
-  "make\\s+a\\s+note",
-  "take\\s+note",
-  "jot\\s+down",
-  "commit\\s+to\\s+memory",
-  "remember\\s+that",
-  "never\\s+forget",
-  "always\\s+remember",
-];
 
 const DEFAULTS: Required<
   Omit<
@@ -102,7 +82,6 @@ const DEFAULTS: Required<
   maxProfileItems: 5,
   injectProfile: true,
   containerTagPrefix: "opencode",
-  keywordPatterns: [],
   autoCaptureEnabled: true,
   autoCaptureMaxIterations: 5,
   autoCaptureIterationTimeout: 30000,
@@ -122,15 +101,6 @@ const DEFAULTS: Required<
   userProfileConfidenceDecayDays: 30,
   userProfileChangelogRetentionCount: 5,
 };
-
-function isValidRegex(pattern: string): boolean {
-  try {
-    new RegExp(pattern);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function expandPath(path: string): string {
   if (path.startsWith("~/")) {
@@ -332,11 +302,7 @@ const CONFIG_TEMPLATE = `{
   // ============================================
   
   // Inject user profile into AI context (preferences, patterns, workflows)
-  "injectProfile": true,
-  
-  // Additional regex patterns to trigger manual memory capture
-  // Default patterns: "remember", "memorize", "save this", "note this", etc.
-  "keywordPatterns": []
+  "injectProfile": true
 }
 `;
 
@@ -393,10 +359,6 @@ export const CONFIG = {
   maxProfileItems: fileConfig.maxProfileItems ?? DEFAULTS.maxProfileItems,
   injectProfile: fileConfig.injectProfile ?? DEFAULTS.injectProfile,
   containerTagPrefix: fileConfig.containerTagPrefix ?? DEFAULTS.containerTagPrefix,
-  keywordPatterns: [
-    ...DEFAULT_KEYWORD_PATTERNS,
-    ...(fileConfig.keywordPatterns ?? []).filter(isValidRegex),
-  ],
   autoCaptureEnabled: fileConfig.autoCaptureEnabled ?? DEFAULTS.autoCaptureEnabled,
   autoCaptureMaxIterations:
     fileConfig.autoCaptureMaxIterations ?? DEFAULTS.autoCaptureMaxIterations,
