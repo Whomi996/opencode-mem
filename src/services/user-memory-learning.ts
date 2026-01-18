@@ -64,16 +64,18 @@ export async function performUserProfileLearning(
 
     userPromptManager.markMultipleAsUserLearningCaptured(prompts.map((p) => p.id));
 
-    await ctx.client?.tui
-      .showToast({
-        body: {
-          title: "User Profile Updated",
-          message: `Analyzed ${prompts.length} prompts and updated your profile`,
-          variant: "success",
-          duration: 3000,
-        },
-      })
-      .catch(() => {});
+    if (CONFIG.showUserProfileToasts) {
+      await ctx.client?.tui
+        .showToast({
+          body: {
+            title: "User Profile Updated",
+            message: `Analyzed ${prompts.length} prompts and updated your profile`,
+            variant: "success",
+            duration: 3000,
+          },
+        })
+        .catch(() => {});
+    }
   } catch (error) {
     const errorStack = error instanceof Error ? error.stack : undefined;
     log("User memory learning error", {
@@ -82,16 +84,18 @@ export async function performUserProfileLearning(
       errorType: error instanceof Error ? error.constructor.name : typeof error,
     });
 
-    await ctx.client?.tui
-      .showToast({
-        body: {
-          title: "User Profile Update Failed",
-          message: String(error),
-          variant: "error",
-          duration: 5000,
-        },
-      })
-      .catch(() => {});
+    if (CONFIG.showErrorToasts) {
+      await ctx.client?.tui
+        .showToast({
+          body: {
+            title: "User Profile Update Failed",
+            message: String(error),
+            variant: "error",
+            duration: 5000,
+          },
+        })
+        .catch(() => {});
+    }
   }
 }
 
@@ -183,7 +187,7 @@ async function analyzeUserProfile(
 
 Your task is to analyze user prompts and ${existingProfile ? "update" : "create"} a comprehensive user profile.
 
-CRITICAL: Detect the language used by the user. You MUST output all descriptions and text in the SAME language as the user's prompts.
+CRITICAL: Detect the language used by the user in their prompts. You MUST output all descriptions, categories, and text in the SAME language as the user's prompts.
 
 Use the update_user_profile tool to save the ${existingProfile ? "updated" : "new"} profile.`;
 

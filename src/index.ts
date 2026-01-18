@@ -172,7 +172,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       } catch (error) {
         log("chat.message: ERROR", { error: String(error) });
 
-        if (ctx.client?.tui) {
+        if (ctx.client?.tui && CONFIG.showErrorToasts) {
           await ctx.client.tui
             .showToast({
               body: {
@@ -460,7 +460,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
           })
           .catch((err) => {
             log("Auto-cleanup failed", { error: String(err) });
-            if (ctx.client?.tui) {
+            if (ctx.client?.tui && CONFIG.showErrorToasts) {
               ctx.client.tui
                 .showToast({
                   body: {

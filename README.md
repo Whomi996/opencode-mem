@@ -55,35 +55,31 @@ Configure at `~/.config/opencode/opencode-mem.jsonc`:
   "embeddingModel": "Xenova/nomic-embed-text-v1",
   "webServerEnabled": true,
   "webServerPort": 4747,
+  
   "autoCaptureEnabled": true,
+  "autoCaptureLanguage": "auto",
   "memoryProvider": "openai-chat",
-  "memoryModel": "gpt-4",
+  "memoryModel": "gpt-4o-mini",
+  "memoryApiUrl": "https://api.openai.com/v1",
+  "memoryApiKey": "sk-...",
+  
+  "showAutoCaptureToasts": true,
+  "showUserProfileToasts": true,
+  "showErrorToasts": true,
+  
   "userProfileAnalysisInterval": 10,
   "maxMemories": 10
 }
+```
+
+**API Key Formats:**
+```jsonc
+"memoryApiKey": "sk-..."
+"memoryApiKey": "file://~/.config/opencode/api-key.txt"
+"memoryApiKey": "env://OPENAI_API_KEY"
 ```
 
 Full documentation available in our [Configuration Guide](https://github.com/tickernelz/opencode-mem/wiki/Configuration-Guide).
-
-## Important: v2.3 Breaking Changes
-
-User-scoped memories removed. All memories now project-scoped. Update configuration:
-
-```jsonc
-// OLD: Remove these
-{
-  "userMemoryAnalysisInterval": 10,
-  "maxProjectMemories": 10
-}
-
-// NEW: Use only
-{
-  "userProfileAnalysisInterval": 10,
-  "maxMemories": 10
-}
-```
-
-Remove `scope` parameter from all `memory()` calls. See [Migration Guide](https://github.com/tickernelz/opencode-mem/wiki/Migration-v2-3) for details.
 
 ## Documentation
 

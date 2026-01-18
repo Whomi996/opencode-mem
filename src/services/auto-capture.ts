@@ -61,7 +61,7 @@ export async function performAutoCapture(
 
     const context = buildMarkdownContext(prompt.content, textResponses, toolCalls, latestMemory);
 
-    const summaryResult = await generateSummary(context, sessionID);
+    const summaryResult = await generateSummary(context, sessionID, prompt.content);
 
     if (!summaryResult || summaryResult.type === "skip") {
       log("Auto-capture: skipped non-technical conversation", { sessionID });
@@ -87,30 +87,34 @@ export async function performAutoCapture(
       userPromptManager.linkMemoryToPrompt(prompt.id, result.id);
       userPromptManager.markAsCaptured(prompt.id);
 
-      await ctx.client?.tui
-        .showToast({
-          body: {
-            title: "Memory Captured",
-            message: "Project memory saved from conversation",
-            variant: "success",
-            duration: 3000,
-          },
-        })
-        .catch(() => {});
+      if (CONFIG.showAutoCaptureToasts) {
+        await ctx.client?.tui
+          .showToast({
+            body: {
+              title: "Memory Captured",
+              message: "Project memory saved from conversation",
+              variant: "success",
+              duration: 3000,
+            },
+          })
+          .catch(() => {});
+      }
     }
   } catch (error) {
     log("Auto-capture error", { sessionID, error: String(error) });
 
-    await ctx.client?.tui
-      .showToast({
-        body: {
-          title: "Auto-Capture Failed",
-          message: String(error),
-          variant: "error",
-          duration: 5000,
-        },
-      })
-      .catch(() => {});
+    if (CONFIG.showErrorToasts) {
+      await ctx.client?.tui
+        .showToast({
+          body: {
+            title: "Auto-Capture Failed",
+            message: String(error),
+            variant: "error",
+            duration: 5000,
+          },
+        })
+        .catch(() => {});
+    }
   }
 }
 
@@ -234,13 +238,15 @@ function buildMarkdownContext(
 
 async function generateSummary(
   context: string,
-  sessionID: string
+  sessionID: string,
+  userPrompt: string
 ): Promise<{ summary: string; type: string } | null> {
   if (!CONFIG.memoryModel || !CONFIG.memoryApiUrl) {
     throw new Error("External API not configured for auto-capture");
   }
 
   const { AIProviderFactory } = await import("./ai/ai-provider-factory.js");
+  const { detectLanguage, getLanguageName } = await import("./language-detector.js");
 
   const providerConfig = {
     model: CONFIG.memoryModel,
@@ -252,6 +258,13 @@ async function generateSummary(
 
   const provider = AIProviderFactory.createProvider(CONFIG.memoryProvider, providerConfig);
 
+  const targetLang =
+    CONFIG.autoCaptureLanguage === "auto" || !CONFIG.autoCaptureLanguage
+      ? detectLanguage(userPrompt)
+      : CONFIG.autoCaptureLanguage;
+
+  const langName = getLanguageName(targetLang);
+
   const systemPrompt = `You are a technical memory recorder for a software development project.
 
 RULES:
@@ -259,35 +272,19 @@ RULES:
 2. SKIP non-technical by returning type="skip"
 3. NO meta-commentary or behavior analysis
 4. Include specific file names, functions, technical details
-5. DETECT the language used by the user. You MUST write the summary and reasoning in that SAME language.
+5. You MUST write the summary in ${langName}.
 
 FORMAT:
 ## Request
-[1-2 sentences: what was requested, in user's language]
+[1-2 sentences: what was requested, in ${langName}]
 
 ## Outcome
-[1-2 sentences: what was done, include files/functions, in user's language]
+[1-2 sentences: what was done, include files/functions, in ${langName}]
 
 SKIP if: greetings, casual chat, no code/decisions made
-CAPTURE if: code changed, bug fixed, feature added, decision made
+CAPTURE if: code changed, bug fixed, feature added, decision made`;
 
-EXAMPLES:
-Technical (English) → type="feature":
-## Request
-Fix function returning null.
-## Outcome
-Changed searchMemories() to listMemories() in auto-capture.ts:166.
-
-Technical (Indonesian) → type="feature":
-## Request
-Perbaiki fungsi yang mengembalikan null.
-## Outcome
-Mengubah searchMemories() menjadi listMemories() di auto-capture.ts:166.
-
-Non-technical → type="skip", summary="":
-User greeted, AI introduced capabilities.`;
-
-  const userPrompt = `${context}
+  const aiPrompt = `${context}
 
 Analyze this conversation. If it contains technical work (code, bugs, features, decisions), create a concise summary. If it's non-technical (greetings, casual chat, incomplete requests), return type="skip" with empty summary.`;
 
@@ -314,7 +311,7 @@ Analyze this conversation. If it contains technical work (code, bugs, features, 
     },
   };
 
-  const result = await provider.executeToolCall(systemPrompt, userPrompt, toolSchema, sessionID);
+  const result = await provider.executeToolCall(systemPrompt, aiPrompt, toolSchema, sessionID);
 
   if (!result.success || !result.data) {
     throw new Error(result.error || "Failed to generate summary");

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { stripJsoncComments } from "./services/jsonc.js";
+import { resolveSecretValue } from "./services/secret-resolver.js";
 
 const CONFIG_DIR = join(homedir(), ".config", "opencode");
 const DATA_DIR = join(homedir(), ".opencode-mem");
@@ -33,6 +34,7 @@ interface OpenCodeMemConfig {
   autoCaptureEnabled?: boolean;
   autoCaptureMaxIterations?: number;
   autoCaptureIterationTimeout?: number;
+  autoCaptureLanguage?: string;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic";
   memoryModel?: string;
   memoryApiUrl?: string;
@@ -52,6 +54,9 @@ interface OpenCodeMemConfig {
   userProfileMaxWorkflows?: number;
   userProfileConfidenceDecayDays?: number;
   userProfileChangelogRetentionCount?: number;
+  showAutoCaptureToasts?: boolean;
+  showUserProfileToasts?: boolean;
+  showErrorToasts?: boolean;
 }
 
 const DEFAULTS: Required<
@@ -64,6 +69,7 @@ const DEFAULTS: Required<
     | "memoryApiKey"
     | "memoryProvider"
     | "customSqlitePath"
+    | "autoCaptureLanguage"
   >
 > & {
   embeddingApiUrl?: string;
@@ -73,6 +79,7 @@ const DEFAULTS: Required<
   memoryApiKey?: string;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic";
   customSqlitePath?: string;
+  autoCaptureLanguage?: string;
 } = {
   storagePath: join(DATA_DIR, "data"),
   embeddingModel: "Xenova/nomic-embed-text-v1",
@@ -100,6 +107,9 @@ const DEFAULTS: Required<
   userProfileMaxWorkflows: 10,
   userProfileConfidenceDecayDays: 30,
   userProfileChangelogRetentionCount: 5,
+  showAutoCaptureToasts: true,
+  showUserProfileToasts: true,
+  showErrorToasts: true,
 };
 
 function expandPath(path: string): string {
@@ -220,6 +230,11 @@ const CONFIG_TEMPLATE = `{
   "memoryModel": "gpt-4o-mini",
   "memoryApiUrl": "https://api.openai.com/v1",
   "memoryApiKey": "sk-...",
+
+  // API Key Formats:
+  // Direct value:        "sk-..."
+  // From file:           "file://~/.config/litellm-key.txt"
+  // From env variable:   "env://LITELLM_API_KEY"
   
   // Examples for different providers:
   // OpenAI Chat Completion (default, backward compatible):
@@ -254,6 +269,23 @@ const CONFIG_TEMPLATE = `{
   
   // Days to keep AI session history before cleanup
   "aiSessionRetentionDays": 7,
+
+  // Language for auto-capture summaries (default: "auto" for auto-detection)
+  // Options: "auto", "en", "id", "zh", "ja", "es", "fr", "de", "ru", "pt", "ar", "ko"
+  // "autoCaptureLanguage": "auto",
+
+  // ============================================
+  // Toast Notifications
+  // ============================================
+
+  // Show toast when memory is auto-captured
+  "showAutoCaptureToasts": true,
+
+  // Show toast when user profile is updated
+  "showUserProfileToasts": true,
+
+  // Show toast for error messages
+  "showErrorToasts": true,
 
   // ============================================
   // User Profile System
@@ -352,7 +384,7 @@ export const CONFIG = {
     getEmbeddingDimensions(fileConfig.embeddingModel ?? DEFAULTS.embeddingModel),
   embeddingApiUrl: fileConfig.embeddingApiUrl,
   embeddingApiKey: fileConfig.embeddingApiUrl
-    ? (fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY)
+    ? resolveSecretValue(fileConfig.embeddingApiKey ?? process.env.OPENAI_API_KEY)
     : undefined,
   similarityThreshold: fileConfig.similarityThreshold ?? DEFAULTS.similarityThreshold,
   maxMemories: fileConfig.maxMemories ?? DEFAULTS.maxMemories,
@@ -364,13 +396,14 @@ export const CONFIG = {
     fileConfig.autoCaptureMaxIterations ?? DEFAULTS.autoCaptureMaxIterations,
   autoCaptureIterationTimeout:
     fileConfig.autoCaptureIterationTimeout ?? DEFAULTS.autoCaptureIterationTimeout,
+  autoCaptureLanguage: fileConfig.autoCaptureLanguage,
   memoryProvider: (fileConfig.memoryProvider ?? "openai-chat") as
     | "openai-chat"
     | "openai-responses"
     | "anthropic",
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
-  memoryApiKey: fileConfig.memoryApiKey,
+  memoryApiKey: resolveSecretValue(fileConfig.memoryApiKey),
   aiSessionRetentionDays: fileConfig.aiSessionRetentionDays ?? DEFAULTS.aiSessionRetentionDays,
   webServerEnabled: fileConfig.webServerEnabled ?? DEFAULTS.webServerEnabled,
   webServerPort: fileConfig.webServerPort ?? DEFAULTS.webServerPort,
@@ -392,6 +425,9 @@ export const CONFIG = {
     fileConfig.userProfileConfidenceDecayDays ?? DEFAULTS.userProfileConfidenceDecayDays,
   userProfileChangelogRetentionCount:
     fileConfig.userProfileChangelogRetentionCount ?? DEFAULTS.userProfileChangelogRetentionCount,
+  showAutoCaptureToasts: fileConfig.showAutoCaptureToasts ?? DEFAULTS.showAutoCaptureToasts,
+  showUserProfileToasts: fileConfig.showUserProfileToasts ?? DEFAULTS.showUserProfileToasts,
+  showErrorToasts: fileConfig.showErrorToasts ?? DEFAULTS.showErrorToasts,
 };
 
 export function isConfigured(): boolean {
