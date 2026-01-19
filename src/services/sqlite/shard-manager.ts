@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { join } from "node:path";
+import { join, basename, isAbsolute } from "node:path";
 import { CONFIG } from "../../config.js";
 import { connectionManager } from "./connection-manager.js";
 import { log } from "../logger.js";
@@ -43,6 +43,11 @@ export class ShardManager {
     return join(dir, `${scope}_${scopeHash}_shard_${shardIndex}.db`);
   }
 
+  private resolveStoredPath(storedPath: string, scope: string): string {
+    const fileName = basename(storedPath);
+    return join(CONFIG.storagePath, `${scope}s`, fileName);
+  }
+
   getActiveShard(scope: "user" | "project", scopeHash: string): ShardInfo | null {
     const stmt = this.metadataDb.prepare(`
       SELECT * FROM shards 
@@ -58,7 +63,7 @@ export class ShardManager {
       scope: row.scope,
       scopeHash: row.scope_hash,
       shardIndex: row.shard_index,
-      dbPath: row.db_path,
+      dbPath: this.resolveStoredPath(row.db_path, row.scope),
       vectorCount: row.vector_count,
       isActive: row.is_active === 1,
       createdAt: row.created_at,
@@ -90,7 +95,7 @@ export class ShardManager {
       scope: row.scope,
       scopeHash: row.scope_hash,
       shardIndex: row.shard_index,
-      dbPath: row.db_path,
+      dbPath: this.resolveStoredPath(row.db_path, row.scope),
       vectorCount: row.vector_count,
       isActive: row.is_active === 1,
       createdAt: row.created_at,
@@ -98,7 +103,8 @@ export class ShardManager {
   }
 
   createShard(scope: "user" | "project", scopeHash: string, shardIndex: number): ShardInfo {
-    const dbPath = this.getShardPath(scope, scopeHash, shardIndex);
+    const fullPath = this.getShardPath(scope, scopeHash, shardIndex);
+    const storedPath = join(`${scope}s`, basename(fullPath)).replace(/\\/g, "/");
     const now = Date.now();
 
     const stmt = this.metadataDb.prepare(`
@@ -106,19 +112,19 @@ export class ShardManager {
       VALUES (?, ?, ?, ?, 0, 1, ?)
     `);
 
-    const result = stmt.run(scope, scopeHash, shardIndex, dbPath, now);
+    const result = stmt.run(scope, scopeHash, shardIndex, storedPath, now);
 
-    const db = connectionManager.getConnection(dbPath);
+    const db = connectionManager.getConnection(fullPath);
     this.initShardDb(db);
 
-    log("Shard created", { scope, scopeHash, shardIndex, dbPath });
+    log("Shard created", { scope, scopeHash, shardIndex, fullPath });
 
     return {
       id: Number(result.lastInsertRowid),
       scope,
       scopeHash,
       shardIndex,
-      dbPath,
+      dbPath: fullPath,
       vectorCount: 0,
       isActive: true,
       createdAt: now,
@@ -222,8 +228,9 @@ export class ShardManager {
   }
 
   getShardByPath(dbPath: string): ShardInfo | null {
-    const stmt = this.metadataDb.prepare(`SELECT * FROM shards WHERE db_path = ?`);
-    const row = stmt.get(dbPath) as any;
+    const fileName = basename(dbPath);
+    const stmt = this.metadataDb.prepare(`SELECT * FROM shards WHERE db_path LIKE '%' || ?`);
+    const row = stmt.get(fileName) as any;
     if (!row) return null;
 
     return {
@@ -231,7 +238,7 @@ export class ShardManager {
       scope: row.scope,
       scopeHash: row.scope_hash,
       shardIndex: row.shard_index,
-      dbPath: row.db_path,
+      dbPath: this.resolveStoredPath(row.db_path, row.scope),
       vectorCount: row.vector_count,
       isActive: row.is_active === 1,
       createdAt: row.created_at,
@@ -239,25 +246,26 @@ export class ShardManager {
   }
 
   deleteShard(shardId: number): void {
-    const stmt = this.metadataDb.prepare(`SELECT db_path FROM shards WHERE id = ?`);
+    const stmt = this.metadataDb.prepare(`SELECT * FROM shards WHERE id = ?`);
     const row = stmt.get(shardId) as any;
 
     if (row) {
-      connectionManager.closeConnection(row.db_path);
+      const fullPath = this.resolveStoredPath(row.db_path, row.scope);
+      connectionManager.closeConnection(fullPath);
 
       try {
         const fs = require("node:fs");
-        if (fs.existsSync(row.db_path)) {
-          fs.unlinkSync(row.db_path);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
         }
       } catch (error) {
-        log("Error deleting shard file", { dbPath: row.db_path, error: String(error) });
+        log("Error deleting shard file", { dbPath: fullPath, error: String(error) });
       }
 
       const deleteStmt = this.metadataDb.prepare(`DELETE FROM shards WHERE id = ?`);
       deleteStmt.run(shardId);
 
-      log("Shard deleted", { shardId, dbPath: row.db_path });
+      log("Shard deleted", { shardId, dbPath: fullPath });
     }
   }
 }
