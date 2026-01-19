@@ -1325,8 +1325,8 @@ textarea:focus-visible {
 }
 
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -1339,7 +1339,7 @@ textarea:focus-visible {
 }
 
 .dashboard-section.full-width {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .dashboard-section h4 {
