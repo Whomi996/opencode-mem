@@ -50,7 +50,8 @@ export class VectorSearch {
     shard: ShardInfo,
     queryVector: Float32Array,
     containerTag: string,
-    limit: number
+    limit: number,
+    queryText?: string
   ): SearchResult[] {
     const db = connectionManager.getConnection(shard.dbPath);
     const queryBuffer = new Uint8Array(queryVector.buffer);
@@ -75,15 +76,15 @@ export class VectorSearch {
       )
       .all(queryBuffer, limit * 4) as any[];
 
-    const scoreMap = new Map<string, { contentDist: number; tagsDist: number }>();
+    const scoreMap = new Map<string, { contentSim: number; tagsSim: number }>();
 
     for (const r of contentResults) {
-      scoreMap.set(r.memory_id, { contentDist: r.distance, tagsDist: 1 });
+      scoreMap.set(r.memory_id, { contentSim: 1 - r.distance, tagsSim: 0 });
     }
 
     for (const r of tagsResults) {
-      const entry = scoreMap.get(r.memory_id) || { contentDist: 1, tagsDist: 1 };
-      entry.tagsDist = r.distance;
+      const entry = scoreMap.get(r.memory_id) || { contentSim: 0, tagsSim: 0 };
+      entry.tagsSim = 1 - r.distance;
       scoreMap.set(r.memory_id, entry);
     }
 
@@ -100,17 +101,34 @@ export class VectorSearch {
       )
       .all(...ids, containerTag) as any[];
 
+    const queryWords = queryText
+      ? queryText
+          .toLowerCase()
+          .split(/[\s,]+/)
+          .filter((w) => w.length > 1)
+      : [];
+
     return rows.map((row: any) => {
       const scores = scoreMap.get(row.id)!;
-      const contentSim = 1 - scores.contentDist;
-      const tagsSim = 1 - scores.tagsDist;
-      const similarity = tagsSim * 0.8 + contentSim * 0.2;
+      const memoryTagsStr = row.tags || "";
+      const memoryTags = memoryTagsStr.split(",").map((t: string) => t.trim().toLowerCase());
+
+      let exactMatchBoost = 0;
+      if (queryWords.length > 0 && memoryTags.length > 0) {
+        const matches = queryWords.filter((w) =>
+          memoryTags.some((t: string) => t.includes(w) || w.includes(t))
+        ).length;
+        exactMatchBoost = matches / Math.max(queryWords.length, 1);
+      }
+
+      const tagSim = Math.max(scores.tagsSim, exactMatchBoost);
+      const similarity = tagSim * 0.8 + scores.contentSim * 0.2;
 
       return {
         id: row.id,
         memory: row.content,
         similarity,
-        tags: row.tags ? row.tags.split(",").map((t: string) => t.trim()) : [],
+        tags: memoryTagsStr ? memoryTagsStr.split(",") : [],
         metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
         containerTag: row.container_tag,
         displayName: row.display_name,
@@ -129,13 +147,14 @@ export class VectorSearch {
     queryVector: Float32Array,
     containerTag: string,
     limit: number,
-    similarityThreshold: number
+    similarityThreshold: number,
+    queryText?: string
   ): Promise<SearchResult[]> {
     const allResults: SearchResult[] = [];
 
     for (const shard of shards) {
       try {
-        const results = this.searchInShard(shard, queryVector, containerTag, limit);
+        const results = this.searchInShard(shard, queryVector, containerTag, limit, queryText);
         allResults.push(...results);
       } catch (error) {
         log("Shard search error", { shardId: shard.id, error: String(error) });

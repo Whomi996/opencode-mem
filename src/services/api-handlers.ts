@@ -291,9 +291,10 @@ export async function handleAddMemory(data: {
       return { success: false, error: "content and containerTag are required" };
     }
     await embeddingService.warmup();
-    const tags = data.tags || [];
+    const tags = (data.tags || []).map((t) => t.trim().toLowerCase());
     const embeddingInput =
       tags.length > 0 ? `${data.content}\nTags: ${tags.join(", ")}` : data.content;
+
     const vector = await embeddingService.embedWithTimeout(embeddingInput);
     let tagsVector: Float32Array | undefined = undefined;
     if (tags.length > 0) {
@@ -971,7 +972,7 @@ export async function handleRunTagMigration(): Promise<
           let currentTags = m.tags
             ? m.tags
                 .split(",")
-                .map((t: string) => t.trim())
+                .map((t: string) => t.trim().toLowerCase())
                 .filter((t: string) => t)
             : [];
 

@@ -327,6 +327,6 @@ Analyze this conversation. If it contains technical work (code, bugs, features, 
   return {
     summary: result.data.summary,
     type: result.data.type,
-    tags: result.data.tags || [],
+    tags: (result.data.tags || []).map((t: string) => t.toLowerCase().trim()),
   };
 }

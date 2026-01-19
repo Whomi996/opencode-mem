@@ -252,7 +252,7 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
                   return JSON.stringify({ success: false, error: "Private content blocked" });
                 const tagInfo = tags.project;
                 const parsedTags = args.tags
-                  ? args.tags.split(",").map((t) => t.trim())
+                  ? args.tags.split(",").map((t) => t.trim().toLowerCase())
                   : undefined;
                 const result = await memoryClient.addMemory(sanitizedContent, tagInfo.tag, {
                   type: args.type,

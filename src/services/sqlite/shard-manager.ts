@@ -173,14 +173,14 @@ export class ShardManager {
     db.run(`
       CREATE VIRTUAL TABLE IF NOT EXISTS vec_memories USING vec0(
         memory_id TEXT PRIMARY KEY,
-        embedding float32[${CONFIG.embeddingDimensions}]
+        embedding float32[${CONFIG.embeddingDimensions}] distance_metric=cosine
       )
     `);
 
     db.run(`
       CREATE VIRTUAL TABLE IF NOT EXISTS vec_tags USING vec0(
         memory_id TEXT PRIMARY KEY,
-        embedding float32[${CONFIG.embeddingDimensions}]
+        embedding float32[${CONFIG.embeddingDimensions}] distance_metric=cosine
       )
     `);
 

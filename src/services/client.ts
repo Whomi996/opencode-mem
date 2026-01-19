@@ -114,7 +114,8 @@ export class LocalMemoryClient {
         queryVector,
         containerTag,
         CONFIG.maxMemories,
-        CONFIG.similarityThreshold
+        CONFIG.similarityThreshold,
+        query
       );
 
       return { success: true as const, results, total: results.length, timing: 0 };
