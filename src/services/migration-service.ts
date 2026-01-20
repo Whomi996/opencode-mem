@@ -187,6 +187,7 @@ export class MigrationService {
     startTime: number
   ): Promise<MigrationResult> {
     await embeddingService.warmup();
+    embeddingService.clearCache();
 
     const totalMemories = mismatch.shardMismatches.reduce((sum, s) => sum + s.vectorCount, 0);
 

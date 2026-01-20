@@ -42,6 +42,8 @@ export class UserPromptManager {
       )
     `);
 
+    this.db.run("UPDATE user_prompts SET captured = 0 WHERE captured = 2");
+
     this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_session ON user_prompts(session_id)");
     this.db.run("CREATE INDEX IF NOT EXISTS idx_user_prompts_captured ON user_prompts(captured)");
     this.db.run(
@@ -96,7 +98,9 @@ export class UserPromptManager {
   }
 
   claimPrompt(promptId: string): boolean {
-    const stmt = this.db.prepare(`UPDATE user_prompts SET captured = 2 WHERE id = ? AND captured = 0`);
+    const stmt = this.db.prepare(
+      `UPDATE user_prompts SET captured = 2 WHERE id = ? AND captured = 0`
+    );
     const result = stmt.run(promptId);
     return result.changes > 0;
   }

@@ -341,6 +341,8 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
               await performUserProfileLearning(ctx, directory);
               const { cleanupService } = await import("./services/cleanup-service.js");
               if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+              const { connectionManager } = await import("./services/sqlite/connection-manager.js");
+              connectionManager.checkpointAll();
             }
           } catch (error) {
             log("Idle processing error", { error: String(error) });

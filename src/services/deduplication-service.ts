@@ -80,10 +80,11 @@ export class DeduplicationService {
         }
 
         const uniqueMemories = Array.from(contentMap.values()).map((arr) => arr[0]);
+        const processedIds = new Set<string>();
 
         for (let i = 0; i < uniqueMemories.length; i++) {
           const mem1 = uniqueMemories[i];
-          if (!mem1.vector) continue;
+          if (!mem1.vector || processedIds.has(mem1.id)) continue;
 
           const vector1 = new Float32Array(new Uint8Array(mem1.vector).buffer);
           const similarGroup: DuplicateGroup = {
@@ -98,7 +99,7 @@ export class DeduplicationService {
 
           for (let j = i + 1; j < uniqueMemories.length; j++) {
             const mem2 = uniqueMemories[j];
-            if (!mem2.vector) continue;
+            if (!mem2.vector || processedIds.has(mem2.id)) continue;
             if (mem1.container_tag !== mem2.container_tag) continue;
 
             const vector2 = new Float32Array(new Uint8Array(mem2.vector).buffer);
@@ -110,6 +111,7 @@ export class DeduplicationService {
                 content: mem2.content,
                 similarity,
               });
+              processedIds.add(mem2.id);
             }
           }
 

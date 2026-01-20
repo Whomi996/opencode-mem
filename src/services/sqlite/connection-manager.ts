@@ -167,6 +167,16 @@ export class ConnectionManager {
     }
     this.connections.clear();
   }
+
+  checkpointAll(): void {
+    for (const [path, db] of this.connections) {
+      try {
+        db.run("PRAGMA wal_checkpoint(PASSIVE)");
+      } catch (error) {
+        log("Error checkpointing database", { path, error: String(error) });
+      }
+    }
+  }
 }
 
 export const connectionManager = new ConnectionManager();

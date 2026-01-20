@@ -150,16 +150,17 @@ export class VectorSearch {
     similarityThreshold: number,
     queryText?: string
   ): Promise<SearchResult[]> {
-    const allResults: SearchResult[] = [];
-
-    for (const shard of shards) {
+    const shardPromises = shards.map(async (shard) => {
       try {
-        const results = this.searchInShard(shard, queryVector, containerTag, limit, queryText);
-        allResults.push(...results);
+        return this.searchInShard(shard, queryVector, containerTag, limit, queryText);
       } catch (error) {
         log("Shard search error", { shardId: shard.id, error: String(error) });
+        return [];
       }
-    }
+    });
+
+    const resultsArray = await Promise.all(shardPromises);
+    const allResults = resultsArray.flat();
 
     allResults.sort((a, b) => b.similarity - a.similarity);
     return allResults.filter((r) => r.similarity >= similarityThreshold).slice(0, limit);
