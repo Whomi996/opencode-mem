@@ -41,8 +41,6 @@ export class CleanupService {
     this.lastCleanupTime = Date.now();
 
     try {
-      log("Cleanup: starting", { retentionDays: CONFIG.autoCleanupRetentionDays });
-
       const cutoffTime = Date.now() - CONFIG.autoCleanupRetentionDays * 24 * 60 * 60 * 1000;
 
       const userShards = shardManager.getAllShards("user", "");
@@ -87,9 +85,6 @@ export class CleanupService {
             }
 
             if (protectedMemoryIds.has(memory.id)) {
-              if (linkedMemoryIds.has(memory.id)) {
-                log("Cleanup: skipped linked memory", { memoryId: memory.id });
-              }
               continue;
             }
 
@@ -109,16 +104,6 @@ export class CleanupService {
       }
 
       const promptsDeleted = promptCleanupResult.deleted - linkedMemoryIds.size;
-
-      log("Cleanup: completed", {
-        totalDeleted,
-        userDeleted,
-        projectDeleted,
-        promptsDeleted,
-        linkedMemoriesProtected: linkedMemoryIds.size,
-        pinnedMemoriesSkipped: pinnedSkipped,
-        cutoffTime: new Date(cutoffTime).toISOString(),
-      });
 
       return {
         deletedCount: totalDeleted,

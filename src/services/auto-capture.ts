@@ -12,11 +12,15 @@ interface ToolCallInfo {
 
 const MAX_TOOL_INPUT_LENGTH = 100;
 
+let isCaptureRunning = false;
+
 export async function performAutoCapture(
   ctx: PluginInput,
   sessionID: string,
   directory: string
 ): Promise<void> {
+  if (isCaptureRunning) return;
+  isCaptureRunning = true;
   try {
     const prompt = userPromptManager.getLastUncapturedPrompt(sessionID);
     if (!prompt) {
@@ -32,7 +36,6 @@ export async function performAutoCapture(
     });
 
     if (!response.data) {
-      log("Auto-capture: no messages in session", { sessionID });
       return;
     }
 
@@ -40,7 +43,6 @@ export async function performAutoCapture(
 
     const promptIndex = messages.findIndex((m: any) => m.info?.id === prompt.messageId);
     if (promptIndex === -1) {
-      log("Auto-capture: prompt message not found", { sessionID, messageId: prompt.messageId });
       return;
     }
 
@@ -64,7 +66,6 @@ export async function performAutoCapture(
     const summaryResult = await generateSummary(context, sessionID, prompt.content);
 
     if (!summaryResult || summaryResult.type === "skip") {
-      log("Auto-capture: skipped non-technical conversation", { sessionID });
       userPromptManager.deletePrompt(prompt.id);
       return;
     }
@@ -101,21 +102,8 @@ export async function performAutoCapture(
           .catch(() => {});
       }
     }
-  } catch (error) {
-    log("Auto-capture error", { sessionID, error: String(error) });
-
-    if (CONFIG.showErrorToasts) {
-      await ctx.client?.tui
-        .showToast({
-          body: {
-            title: "Auto-Capture Failed",
-            message: String(error),
-            variant: "error",
-            duration: 5000,
-          },
-        })
-        .catch(() => {});
-    }
+  } finally {
+    isCaptureRunning = false;
   }
 }
 
@@ -171,8 +159,6 @@ function extractAIContent(messages: any[]): {
 async function getLatestProjectMemory(containerTag: string): Promise<string | null> {
   try {
     const result = await memoryClient.listMemories(containerTag, 1);
-    log("Auto-capture: latest memory list result", { result });
-    log("Auto-capture: container tag", { containerTag });
     if (!result.success || result.memories.length === 0) {
       return null;
     }

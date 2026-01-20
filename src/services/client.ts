@@ -105,7 +105,6 @@ export class LocalMemoryClient {
       const shards = shardManager.getAllShards(scope, hash);
 
       if (shards.length === 0) {
-        log("searchMemories: no shards found", { containerTag });
         return { success: true as const, results: [], total: 0, timing: 0 };
       }
 
@@ -225,7 +224,6 @@ export class LocalMemoryClient {
         }
       }
 
-      log("deleteMemory: not found", { memoryId });
       return { success: false, error: "Memory not found" };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -242,7 +240,6 @@ export class LocalMemoryClient {
       const shards = shardManager.getAllShards(scope, hash);
 
       if (shards.length === 0) {
-        log("listMemories: no shards found", { containerTag });
         return {
           success: true as const,
           memories: [],

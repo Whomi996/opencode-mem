@@ -27,11 +27,9 @@ export class ConnectionManager {
 
         try {
           Database.setCustomSQLite(customPath);
-          log("Using custom SQLite library", { path: customPath });
         } catch (error) {
           const errorStr = String(error);
           if (errorStr.includes("SQLite already loaded")) {
-            log("SQLite already loaded, skipping custom path configuration");
           } else {
             throw new Error(
               `Failed to load custom SQLite library: ${error}\n` + `Path: ${customPath}`
@@ -55,11 +53,9 @@ export class ConnectionManager {
         if (foundPath) {
           try {
             Database.setCustomSQLite(foundPath);
-            log("Auto-detected and using Homebrew SQLite", { path: foundPath });
           } catch (error) {
             const errorStr = String(error);
             if (errorStr.includes("SQLite already loaded")) {
-              log("SQLite already loaded, skipping auto-detected path configuration");
             } else {
               throw new Error(`Failed to load Homebrew SQLite: ${error}\n` + `Path: ${foundPath}`);
             }
@@ -118,7 +114,6 @@ export class ConnectionManager {
 
       if (!hasTags && columns.length > 0) {
         db.run("ALTER TABLE memories ADD COLUMN tags TEXT");
-        log("Migrated schema: added tags column to memories table");
       }
 
       db.run(`

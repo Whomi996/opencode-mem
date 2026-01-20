@@ -134,11 +134,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
           };
         }
 
-        log("No tool call found, retrying", {
-          iteration: iterations,
-          expectedTool: toolSchema.function.name,
-        });
-
         currentPrompt = this.buildRetryPrompt(data);
       } catch (error) {
         clearTimeout(timeout);
@@ -166,7 +161,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
 
   private extractToolCall(data: ResponsesAPIOutput, expectedToolName: string): any | null {
     if (!data.output || !Array.isArray(data.output)) {
-      log("Extract tool call: no output array", { hasOutput: !!data.output });
       return null;
     }
 
@@ -192,12 +186,6 @@ export class OpenAIResponsesProvider extends BaseAIProvider {
         }
       }
     }
-
-    log("No matching function call found", {
-      expectedTool: expectedToolName,
-      foundTypes: data.output.map((item) => item.type),
-      foundNames: data.output.map((item) => item.name).filter(Boolean),
-    });
 
     return null;
   }

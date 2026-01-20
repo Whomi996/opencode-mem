@@ -103,8 +103,6 @@ export class MigrationService {
     const startTime = Date.now();
 
     try {
-      log("Migration: starting", { strategy, model: CONFIG.embeddingModel });
-
       const mismatch = await this.detectDimensionMismatch();
 
       if (!mismatch.needsMigration) {
@@ -161,11 +159,6 @@ export class MigrationService {
 
         shardManager.deleteShard(shardInfo.shardId);
         deletedShards++;
-
-        log("Migration: deleted shard", {
-          shardId: shardInfo.shardId,
-          vectorCount: shardInfo.vectorCount,
-        });
       } catch (error) {
         log("Migration: error deleting shard", {
           shardId: shardInfo.shardId,
@@ -304,11 +297,6 @@ export class MigrationService {
             processedCount++;
           }
         }
-
-        log("Migration: re-embedded shard", {
-          shardId: shardInfo.shardId,
-          count: tempMemories.length,
-        });
       } catch (error) {
         log("Migration: error processing shard", {
           shardId: shardInfo.shardId,

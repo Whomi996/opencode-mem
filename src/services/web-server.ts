@@ -45,7 +45,6 @@ export class WebServer {
 
   private async _start(): Promise<void> {
     if (!this.config.enabled) {
-      log("Web server disabled in config");
       return;
     }
 

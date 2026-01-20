@@ -38,10 +38,6 @@ export class DeduplicationService {
     this.isRunning = true;
 
     try {
-      log("Deduplication: starting", {
-        threshold: CONFIG.deduplicationSimilarityThreshold,
-      });
-
       const userShards = shardManager.getAllShards("user", "");
       const projectShards = shardManager.getAllShards("project", "");
       const allShards = [...userShards, ...projectShards];
@@ -122,11 +118,6 @@ export class DeduplicationService {
           }
         }
       }
-
-      log("Deduplication: completed", {
-        exactDeleted,
-        nearDuplicateGroupsFound: nearDuplicateGroups.length,
-      });
 
       return {
         exactDuplicatesDeleted: exactDeleted,

@@ -40,19 +40,15 @@ export class EmbeddingService {
   private async initializeModel(progressCallback?: (progress: any) => void): Promise<void> {
     try {
       if (CONFIG.embeddingApiUrl && CONFIG.embeddingApiKey) {
-        log("Using OpenAI-compatible API for embeddings");
         this.isWarmedUp = true;
         return;
       }
-
-      log("Downloading embedding model", { model: CONFIG.embeddingModel });
 
       this.pipe = await pipeline("feature-extraction", CONFIG.embeddingModel, {
         progress_callback: progressCallback,
       });
 
       this.isWarmedUp = true;
-      log("Embedding model ready");
     } catch (error) {
       this.initPromise = null;
       log("Failed to initialize embedding model", { error: String(error) });

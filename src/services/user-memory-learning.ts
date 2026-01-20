@@ -7,10 +7,14 @@ import type { UserPrompt } from "./user-prompt/user-prompt-manager.js";
 import { userProfileManager } from "./user-profile/user-profile-manager.js";
 import type { UserProfile, UserProfileData } from "./user-profile/types.js";
 
+let isLearningRunning = false;
+
 export async function performUserProfileLearning(
   ctx: PluginInput,
   directory: string
 ): Promise<void> {
+  if (isLearningRunning) return;
+  isLearningRunning = true;
   try {
     const count = userPromptManager.countUnanalyzedForUserLearning();
     const threshold = CONFIG.userProfileAnalysisInterval;
@@ -35,7 +39,6 @@ export async function performUserProfileLearning(
     const updatedProfileData = await analyzeUserProfile(context, existingProfile);
 
     if (!updatedProfileData) {
-      log("User memory learning: no profile updates", { promptCount: prompts.length });
       userPromptManager.markMultipleAsUserLearningCaptured(prompts.map((p) => p.id));
       return;
     }
@@ -76,26 +79,8 @@ export async function performUserProfileLearning(
         })
         .catch(() => {});
     }
-  } catch (error) {
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    log("User memory learning error", {
-      error: String(error),
-      stack: errorStack,
-      errorType: error instanceof Error ? error.constructor.name : typeof error,
-    });
-
-    if (CONFIG.showErrorToasts) {
-      await ctx.client?.tui
-        .showToast({
-          body: {
-            title: "User Profile Update Failed",
-            message: String(error),
-            variant: "error",
-            duration: 5000,
-          },
-        })
-        .catch(() => {});
-    }
+  } finally {
+    isLearningRunning = false;
   }
 }
 

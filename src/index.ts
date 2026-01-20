@@ -20,9 +20,9 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
   const { directory } = ctx;
   const tags = getTags(directory);
   let webServer: WebServer | null = null;
+  let idleTimeout: Timer | null = null;
 
   if (!isConfigured()) {
-    log("Plugin disabled - memory system not configured");
   }
 
   const GLOBAL_PLUGIN_WARMUP_KEY = Symbol.for("opencode-mem.plugin.warmedup");
@@ -31,7 +31,6 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
     try {
       await memoryClient.warmup();
       (globalThis as any)[GLOBAL_PLUGIN_WARMUP_KEY] = true;
-      log("Plugin warmup completed");
     } catch (error) {
       log("Plugin warmup failed", { error: String(error) });
     }
@@ -330,10 +329,22 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
       if (event.type === "session.idle") {
         if (!isConfigured()) return;
         const sessionID = event.properties?.sessionID;
-        if (sessionID) await performAutoCapture(ctx, sessionID, directory);
-        await performUserProfileLearning(ctx, directory);
-        const { cleanupService } = await import("./services/cleanup-service.js");
-        if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+        if (!sessionID) return;
+
+        if (idleTimeout) clearTimeout(idleTimeout);
+
+        idleTimeout = setTimeout(async () => {
+          try {
+            await performAutoCapture(ctx, sessionID, directory);
+            await performUserProfileLearning(ctx, directory);
+            const { cleanupService } = await import("./services/cleanup-service.js");
+            if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+          } catch (error) {
+            log("Idle processing error", { error: String(error) });
+          } finally {
+            idleTimeout = null;
+          }
+        }, 10000);
       }
     },
   };

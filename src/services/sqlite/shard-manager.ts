@@ -117,8 +117,6 @@ export class ShardManager {
     const db = connectionManager.getConnection(fullPath);
     this.initShardDb(db);
 
-    log("Shard created", { scope, scopeHash, shardIndex, fullPath });
-
     return {
       id: Number(result.lastInsertRowid),
       scope,
@@ -210,7 +208,6 @@ export class ShardManager {
       UPDATE shards SET is_active = 0 WHERE id = ?
     `);
     stmt.run(shardId);
-    log("Shard marked read-only", { shardId });
   }
 
   incrementVectorCount(shardId: number): void {
@@ -264,8 +261,6 @@ export class ShardManager {
 
       const deleteStmt = this.metadataDb.prepare(`DELETE FROM shards WHERE id = ?`);
       deleteStmt.run(shardId);
-
-      log("Shard deleted", { shardId, dbPath: fullPath });
     }
   }
 }

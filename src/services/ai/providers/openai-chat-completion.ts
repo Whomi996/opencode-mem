@@ -83,10 +83,6 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
           toolResponses.forEach((tr) => result.push(tr));
           i = j;
         } else {
-          log("Skipping incomplete tool call sequence", {
-            assistantMsgIndex: i,
-            missingToolCallIds: Array.from(toolCallIds),
-          });
           break;
         }
       } else {
