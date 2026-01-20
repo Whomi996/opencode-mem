@@ -927,10 +927,40 @@ function renderUserProfile() {
     return;
   }
 
-  const data = profile.profileData;
-  const preferences = data.preferences || [];
-  const patterns = data.patterns || [];
-  const workflows = data.workflows || [];
+  let data = profile.profileData;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      console.error("Failed to parse profileData string", e);
+    }
+  }
+
+  const parseField = (field) => {
+    if (!field) return [];
+    let result = field;
+    let lastResult = null;
+    while (typeof result === "string" && result !== lastResult) {
+      lastResult = result;
+      try {
+        result = JSON.parse(typeof jsonrepair === "function" ? jsonrepair(result) : result);
+      } catch {
+        break;
+      }
+    }
+    if (!Array.isArray(result)) return [];
+    const flattened = [];
+    const walk = (item) => {
+      if (Array.isArray(item)) item.forEach(walk);
+      else if (item && typeof item === "object") flattened.push(item);
+    };
+    walk(result);
+    return flattened;
+  };
+
+  const preferences = parseField(data.preferences);
+  const patterns = parseField(data.patterns);
+  const workflows = parseField(data.workflows);
 
   container.innerHTML = `
     <div class="profile-header">
@@ -965,18 +995,18 @@ function renderUserProfile() {
             : `
           <div class="cards-grid">
             ${preferences
-              .sort((a, b) => b.confidence - a.confidence)
+              .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
               .map(
                 (p) => `
               <div class="compact-card preference-card">
                 <div class="card-top">
-                  <span class="category-tag">${escapeHtml(p.category)}</span>
-                  <div class="confidence-ring" style="--p:${Math.round(p.confidence * 100)}">
-                    <span>${Math.round(p.confidence * 100)}%</span>
+                  <span class="category-tag">${escapeHtml(p.category || "General")}</span>
+                  <div class="confidence-ring" style="--p:${Math.round((p.confidence || 0) * 100)}">
+                    <span>${Math.round((p.confidence || 0) * 100)}%</span>
                   </div>
                 </div>
                 <div class="card-body">
-                  <p class="card-text">${escapeHtml(p.description)}</p>
+                  <p class="card-text">${escapeHtml(p.description || "")}</p>
                 </div>
                 ${
                   p.evidence && p.evidence.length > 0
@@ -1009,10 +1039,10 @@ function renderUserProfile() {
                 (p) => `
               <div class="compact-card pattern-card">
                 <div class="card-top">
-                  <span class="category-tag">${escapeHtml(p.category)}</span>
+                  <span class="category-tag">${escapeHtml(p.category || "General")}</span>
                 </div>
                 <div class="card-body">
-                  <p class="card-text">${escapeHtml(p.description)}</p>
+                  <p class="card-text">${escapeHtml(p.description || "")}</p>
                 </div>
               </div>
             `
@@ -1034,16 +1064,16 @@ function renderUserProfile() {
               .map(
                 (w) => `
               <div class="workflow-row">
-                <div class="workflow-title">${escapeHtml(w.description)}</div>
+                <div class="workflow-title">${escapeHtml(w.description || "")}</div>
                 <div class="workflow-steps-horizontal">
-                  ${w.steps
+                  ${(w.steps || [])
                     .map(
                       (step, i) => `
                     <div class="step-node">
                       <span class="step-idx">${i + 1}</span>
                       <span class="step-content">${escapeHtml(step)}</span>
                     </div>
-                    ${i < w.steps.length - 1 ? '<i data-lucide="arrow-right" class="step-arrow"></i>' : ""}
+                    ${i < (w.steps || []).length - 1 ? '<i data-lucide="arrow-right" class="step-arrow"></i>' : ""}
                   `
                     )
                     .join("")}

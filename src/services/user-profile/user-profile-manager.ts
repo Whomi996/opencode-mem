@@ -83,6 +83,12 @@ export class UserProfileManager {
     const id = `profile_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const now = Date.now();
 
+    const cleanedData: UserProfileData = {
+      preferences: safeArray(profileData.preferences),
+      patterns: safeArray(profileData.patterns),
+      workflows: safeArray(profileData.workflows),
+    };
+
     const stmt = this.db.prepare(`
       INSERT INTO user_profiles (
         id, user_id, display_name, user_name, user_email, 
@@ -98,13 +104,13 @@ export class UserProfileManager {
       displayName,
       userName,
       userEmail,
-      JSON.stringify(profileData),
+      JSON.stringify(cleanedData),
       now,
       now,
       promptsAnalyzed
     );
 
-    this.addChangelog(id, 1, "create", "Initial profile creation", profileData);
+    this.addChangelog(id, 1, "create", "Initial profile creation", cleanedData);
 
     return id;
   }
@@ -116,6 +122,12 @@ export class UserProfileManager {
     changeSummary: string
   ): void {
     const now = Date.now();
+
+    const cleanedData: UserProfileData = {
+      preferences: safeArray(profileData.preferences),
+      patterns: safeArray(profileData.patterns),
+      workflows: safeArray(profileData.workflows),
+    };
 
     const getVersionStmt = this.db.prepare(`SELECT version FROM user_profiles WHERE id = ?`);
     const versionRow = getVersionStmt.get(profileId) as any;
@@ -131,14 +143,14 @@ export class UserProfileManager {
     `);
 
     updateStmt.run(
-      JSON.stringify(profileData),
+      JSON.stringify(cleanedData),
       newVersion,
       now,
       additionalPromptsAnalyzed,
       profileId
     );
 
-    this.addChangelog(profileId, newVersion, "update", changeSummary, profileData);
+    this.addChangelog(profileId, newVersion, "update", changeSummary, cleanedData);
 
     this.cleanupOldChangelogs(profileId);
   }
@@ -268,25 +280,29 @@ export class UserProfileManager {
 
   mergeProfileData(existing: UserProfileData, updates: Partial<UserProfileData>): UserProfileData {
     const merged: UserProfileData = {
-      preferences: safeArray(existing?.preferences),
-      patterns: safeArray(existing?.patterns),
-      workflows: safeArray(existing?.workflows),
+      preferences: this.ensureArray(existing?.preferences),
+      patterns: this.ensureArray(existing?.patterns),
+      workflows: this.ensureArray(existing?.workflows),
     };
 
     if (updates.preferences) {
-      for (const newPref of updates.preferences) {
+      const incomingPrefs = this.ensureArray(updates.preferences);
+      for (const newPref of incomingPrefs) {
         const existingIndex = merged.preferences.findIndex(
           (p) => p.category === newPref.category && p.description === newPref.description
         );
 
         if (existingIndex >= 0) {
-          const existing = merged.preferences[existingIndex];
-          if (existing) {
+          const existingItem = merged.preferences[existingIndex];
+          if (existingItem) {
             merged.preferences[existingIndex] = {
               ...newPref,
-              confidence: Math.min(1, existing.confidence + 0.1),
+              confidence: Math.min(1, (existingItem.confidence || 0) + 0.1),
               evidence: [
-                ...new Set([...safeArray(existing.evidence), ...safeArray(newPref.evidence)]),
+                ...new Set([
+                  ...this.ensureArray(existingItem.evidence),
+                  ...this.ensureArray(newPref.evidence),
+                ]),
               ].slice(0, 5),
               lastUpdated: Date.now(),
             };
@@ -296,22 +312,23 @@ export class UserProfileManager {
         }
       }
 
-      merged.preferences.sort((a, b) => b.confidence - a.confidence);
+      merged.preferences.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
       merged.preferences = merged.preferences.slice(0, CONFIG.userProfileMaxPreferences);
     }
 
     if (updates.patterns) {
-      for (const newPattern of updates.patterns) {
+      const incomingPatterns = this.ensureArray(updates.patterns);
+      for (const newPattern of incomingPatterns) {
         const existingIndex = merged.patterns.findIndex(
           (p) => p.category === newPattern.category && p.description === newPattern.description
         );
 
         if (existingIndex >= 0) {
-          const existing = merged.patterns[existingIndex];
-          if (existing) {
+          const existingItem = merged.patterns[existingIndex];
+          if (existingItem) {
             merged.patterns[existingIndex] = {
               ...newPattern,
-              frequency: existing.frequency + 1,
+              frequency: (existingItem.frequency || 1) + 1,
               lastSeen: Date.now(),
             };
           }
@@ -320,22 +337,23 @@ export class UserProfileManager {
         }
       }
 
-      merged.patterns.sort((a, b) => b.frequency - a.frequency);
+      merged.patterns.sort((a, b) => (b.frequency || 0) - (a.frequency || 0));
       merged.patterns = merged.patterns.slice(0, CONFIG.userProfileMaxPatterns);
     }
 
     if (updates.workflows) {
-      for (const newWorkflow of updates.workflows) {
+      const incomingWorkflows = this.ensureArray(updates.workflows);
+      for (const newWorkflow of incomingWorkflows) {
         const existingIndex = merged.workflows.findIndex(
           (w) => w.description === newWorkflow.description
         );
 
         if (existingIndex >= 0) {
-          const existing = merged.workflows[existingIndex];
-          if (existing) {
+          const existingItem = merged.workflows[existingIndex];
+          if (existingItem) {
             merged.workflows[existingIndex] = {
               ...newWorkflow,
-              frequency: existing.frequency + 1,
+              frequency: (existingItem.frequency || 1) + 1,
             };
           }
         } else {
@@ -343,11 +361,23 @@ export class UserProfileManager {
         }
       }
 
-      merged.workflows.sort((a, b) => b.frequency - a.frequency);
+      merged.workflows.sort((a, b) => (b.frequency || 0) - (a.frequency || 0));
       merged.workflows = merged.workflows.slice(0, CONFIG.userProfileMaxWorkflows);
     }
 
     return merged;
+  }
+
+  private ensureArray(val: any): any[] {
+    if (typeof val === "string") {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(val) ? val : [];
   }
 }
 
