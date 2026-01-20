@@ -27,6 +27,10 @@ export async function performAutoCapture(
       return;
     }
 
+    if (!userPromptManager.claimPrompt(prompt.id)) {
+      return;
+    }
+
     if (!ctx.client) {
       throw new Error("Client not available");
     }

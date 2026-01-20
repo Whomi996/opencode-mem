@@ -336,9 +336,12 @@ export const OpenCodeMemPlugin: Plugin = async (ctx: PluginInput) => {
         idleTimeout = setTimeout(async () => {
           try {
             await performAutoCapture(ctx, sessionID, directory);
-            await performUserProfileLearning(ctx, directory);
-            const { cleanupService } = await import("./services/cleanup-service.js");
-            if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+
+            if (webServer?.isServerOwner()) {
+              await performUserProfileLearning(ctx, directory);
+              const { cleanupService } = await import("./services/cleanup-service.js");
+              if (await cleanupService.shouldRunCleanup()) await cleanupService.runCleanup();
+            }
           } catch (error) {
             log("Idle processing error", { error: String(error) });
           } finally {

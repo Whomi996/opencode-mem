@@ -85,6 +85,7 @@ export class ConnectionManager {
   }
 
   private initDatabase(db: Database): void {
+    db.run("PRAGMA busy_timeout = 5000");
     db.run("PRAGMA journal_mode = WAL");
     db.run("PRAGMA synchronous = NORMAL");
     db.run("PRAGMA cache_size = -64000");
