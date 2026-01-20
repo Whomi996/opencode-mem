@@ -170,6 +170,7 @@ function groupMemories(items) {
 function renderCombinedCard(pair) {
   const { memory, prompt } = pair;
   const isSelected = state.selectedMemories.has(memory.id);
+  const isPinned = memory.isPinned || false;
   const similarityHtml =
     memory.similarity !== undefined
       ? `<span class="similarity-score">${Math.round(memory.similarity * 100)}%</span>`
@@ -180,8 +181,20 @@ function renderCombinedCard(pair) {
       ? `<div class="tags-list">${memory.tags.map((t) => `<span class="tag-badge">${escapeHtml(t)}</span>`).join("")}</div>`
       : "";
 
+  const pinButton = isPinned
+    ? `<button class="btn-pin pinned" onclick="unpinMemory('${memory.id}')" title="Unpin"><i data-lucide="pin" class="icon icon-filled"></i></button>`
+    : `<button class="btn-pin" onclick="pinMemory('${memory.id}')" title="Pin"><i data-lucide="pin" class="icon"></i></button>`;
+
+  const createdDate = formatDate(memory.createdAt);
+  const updatedDate =
+    memory.updatedAt && memory.updatedAt !== memory.createdAt ? formatDate(memory.updatedAt) : null;
+
+  const dateInfo = updatedDate
+    ? `<span>Created: ${createdDate}</span><span>Updated: ${updatedDate}</span>`
+    : `<span>Created: ${createdDate}</span>`;
+
   return `
-    <div class="combined-card ${isSelected ? "selected" : ""}" data-id="${memory.id}">
+    <div class="combined-card ${isSelected ? "selected" : ""} ${isPinned ? "pinned" : ""}" data-id="${memory.id}">
       <div class="combined-prompt-section">
         <div class="combined-header">
           <span class="badge badge-prompt">USER PROMPT</span>
@@ -201,9 +214,12 @@ function renderCombinedCard(pair) {
             <span class="badge badge-memory">MEMORY</span>
             ${memory.memoryType ? `<span class="badge badge-type">${memory.memoryType}</span>` : ""}
             ${similarityHtml}
+            ${isPinned ? '<span class="badge badge-pinned">PINNED</span>' : ""}
             <span class="memory-display-name">${escapeHtml(memory.displayName || memory.id)}</span>
           </div>
           <div class="memory-actions">
+            ${pinButton}
+            <button class="btn-edit" onclick="editMemory('${memory.id}')"><i data-lucide="edit-3" class="icon"></i></button>
             <button class="btn-delete" onclick="deleteMemoryWithLink('${memory.id}', true)">
               <i data-lucide="trash-2" class="icon"></i> Delete Pair
             </button>
@@ -211,6 +227,10 @@ function renderCombinedCard(pair) {
         </div>
         ${tagsHtml}
         <div class="memory-content markdown-content">${renderMarkdown(memory.content)}</div>
+        <div class="memory-footer">
+          ${dateInfo}
+          <span>ID: ${memory.id}</span>
+        </div>
       </div>
     </div>
   `;

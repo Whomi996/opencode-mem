@@ -210,10 +210,11 @@ export class LocalMemoryClient {
     try {
       await this.initialize();
 
-      const { scope, hash } = extractScopeFromContainerTag(memoryId);
-      const shards = shardManager.getAllShards(scope, hash);
+      const userShards = shardManager.getAllShards("user", "");
+      const projectShards = shardManager.getAllShards("project", "");
+      const allShards = [...userShards, ...projectShards];
 
-      for (const shard of shards) {
+      for (const shard of allShards) {
         const db = connectionManager.getConnection(shard.dbPath);
         const memory = vectorSearch.getMemoryById(db, memoryId);
 
