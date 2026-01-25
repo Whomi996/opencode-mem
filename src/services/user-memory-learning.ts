@@ -242,7 +242,12 @@ Use the update_user_profile tool to save the ${existingProfile ? "updated" : "ne
     },
   };
 
-  const result = await provider.executeToolCall(systemPrompt, context, toolSchema, "user-profile");
+  const result = await provider.executeToolCall(
+    systemPrompt,
+    context,
+    toolSchema,
+    `user-profile-${Date.now()}`
+  );
 
   if (!result.success || !result.data) {
     throw new Error(result.error || "Failed to analyze user profile");
