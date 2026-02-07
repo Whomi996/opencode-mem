@@ -172,6 +172,18 @@ export class VectorSearch {
     db.prepare(`DELETE FROM memories WHERE id = ?`).run(memoryId);
   }
 
+  updateVector(db: Database, memoryId: string, vector: Float32Array, tagsVector?: Float32Array): void {
+    const vectorBuffer = new Uint8Array(vector.buffer);
+    db.prepare(`DELETE FROM vec_memories WHERE memory_id = ?`).run(memoryId);
+    db.prepare(`INSERT INTO vec_memories (memory_id, embedding) VALUES (?, ?)`).run(memoryId, vectorBuffer);
+    
+    if (tagsVector) {
+      const tagsVectorBuffer = new Uint8Array(tagsVector.buffer);
+      db.prepare(`DELETE FROM vec_tags WHERE memory_id = ?`).run(memoryId);
+      db.prepare(`INSERT INTO vec_tags (memory_id, embedding) VALUES (?, ?)`).run(memoryId, tagsVectorBuffer);
+    }
+  }
+
   listMemories(db: Database, containerTag: string, limit: number): any[] {
     const stmt = db.prepare(`
       SELECT * FROM memories 

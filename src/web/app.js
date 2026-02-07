@@ -30,7 +30,13 @@ function renderMarkdown(markdown) {
 
 async function fetchAPI(endpoint, options = {}) {
   try {
-    const response = await fetch(API_BASE + endpoint, options);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const response = await fetch(API_BASE + endpoint, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     const data = await response.json();
     return data;
   } catch (error) {
@@ -809,24 +815,55 @@ async function runTagMigration() {
   const progress = document.getElementById("tag-migration-progress");
 
   actions.classList.add("hidden");
-  status.textContent = "Running technical tagging... This uses AI and may take a while.";
-  progress.style.width = "50%"; // Simple progress for now as it is non-streaming
+  status.textContent = "Starting migration...";
+  progress.style.width = "0%";
 
-  const result = await fetchAPI("/api/migration/tags/run", { method: "POST" });
+  let totalProcessed = 0;
+  let hasMore = true;
+  let attempts = 0;
+  const maxAttempts = 1000;
 
-  if (result.success) {
-    progress.style.width = "100%";
-    status.textContent = `Successfully tagged ${result.data.processed} memories!`;
-    showToast("Migration complete", "success");
-    setTimeout(() => {
-      document.getElementById("tag-migration-overlay").classList.add("hidden");
-      loadMemories();
-      loadStats();
-    }, 2000);
-  } else {
-    status.textContent = "Migration failed: " + result.error;
-    actions.classList.remove("hidden");
+  while (hasMore && attempts < maxAttempts) {
+    attempts++;
+    const result = await fetchAPI("/api/migration/tags/run-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ batchSize: 3 }),
+    });
+
+    if (!result.success) {
+      status.textContent = "Migration failed: " + result.error;
+      actions.classList.remove("hidden");
+      return;
+    }
+
+    totalProcessed = result.data.processed;
+    hasMore = result.data.hasMore;
+    const total = result.data.total;
+    const percent = total > 0 ? Math.round((totalProcessed / total) * 100) : 0;
+    
+    progress.style.width = percent + "%";
+    status.textContent = `Processing memories... ${totalProcessed}/${total} (${percent}%)`;
+
+    if (hasMore) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
+
+  if (attempts >= maxAttempts) {
+    status.textContent = "Migration stopped: maximum attempts reached";
+    actions.classList.remove("hidden");
+    return;
+  }
+
+  progress.style.width = "100%";
+  status.textContent = `Successfully tagged ${totalProcessed} memories!`;
+  showToast("Migration complete", "success");
+  setTimeout(() => {
+    document.getElementById("tag-migration-overlay").classList.add("hidden");
+    loadMemories();
+    loadStats();
+  }, 2000);
 }
 
 function showMigrationWarning(data) {

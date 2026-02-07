@@ -18,6 +18,8 @@ import {
   handleRunMigration,
   handleDetectTagMigration,
   handleRunTagMigration,
+  handleRunTagMigrationBatch,
+  handleGetTagMigrationProgress,
   handleDeletePrompt,
   handleBulkDeletePrompts,
   handleGetUserProfile,
@@ -173,6 +175,18 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (path === "/api/migration/tags/run" && method === "POST") {
       const result = await handleRunTagMigration();
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/migration/tags/run-batch" && method === "POST") {
+      const body = (await req.json()) as any;
+      const batchSize = body?.batchSize || 5;
+      const result = await handleRunTagMigrationBatch(batchSize);
+      return jsonResponse(result);
+    }
+
+    if (path === "/api/migration/tags/progress" && method === "GET") {
+      const result = await handleGetTagMigrationProgress();
       return jsonResponse(result);
     }
 
