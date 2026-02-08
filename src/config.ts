@@ -41,6 +41,7 @@ interface OpenCodeMemConfig {
   memoryModel?: string;
   memoryApiUrl?: string;
   memoryApiKey?: string;
+  memoryTemperature?: number | false;
   aiSessionRetentionDays?: number;
   webServerEnabled?: boolean;
   webServerPort?: number;
@@ -70,6 +71,7 @@ const DEFAULTS: Required<
     | "memoryApiUrl"
     | "memoryApiKey"
     | "memoryProvider"
+    | "memoryTemperature"
     | "customSqlitePath"
     | "autoCaptureLanguage"
     | "userEmailOverride"
@@ -82,6 +84,7 @@ const DEFAULTS: Required<
   memoryApiUrl?: string;
   memoryApiKey?: string;
   memoryProvider?: "openai-chat" | "openai-responses" | "anthropic";
+  memoryTemperature?: number | false;
   customSqlitePath?: string;
   autoCaptureLanguage?: string;
   userEmailOverride?: string;
@@ -272,12 +275,17 @@ const CONFIG_TEMPLATE = `{
   
   // Maximum iterations for multi-turn AI analysis (for openai-responses and anthropic)
   "autoCaptureMaxIterations": 5,
-  
+   
   // Timeout per iteration in milliseconds (30 seconds default)
   "autoCaptureIterationTimeout": 30000,
-  
+   
   // Days to keep AI session history before cleanup
   "aiSessionRetentionDays": 7,
+
+  // Temperature for AI API requests (set to false to omit parameter for models that don't support it)
+  // Some reasoning models (like o1, o3, gpt-5) don't support temperature parameter
+  // Set to false and add "memoryTemperature": false in config when using such models
+  "memoryTemperature": 0.3,
 
   // Language for auto-capture summaries (default: "auto" for auto-detection)
   // Options: "auto", "en", "id", "zh", "ja", "es", "fr", "de", "ru", "pt", "ar", "ko"
@@ -415,6 +423,7 @@ export const CONFIG = {
   memoryModel: fileConfig.memoryModel,
   memoryApiUrl: fileConfig.memoryApiUrl,
   memoryApiKey: resolveSecretValue(fileConfig.memoryApiKey),
+  memoryTemperature: fileConfig.memoryTemperature,
   aiSessionRetentionDays: fileConfig.aiSessionRetentionDays ?? DEFAULTS.aiSessionRetentionDays,
   webServerEnabled: fileConfig.webServerEnabled ?? DEFAULTS.webServerEnabled,
   webServerPort: fileConfig.webServerPort ?? DEFAULTS.webServerPort,

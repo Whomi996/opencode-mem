@@ -164,13 +164,16 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
       const timeout = setTimeout(() => controller.abort(), iterationTimeout);
 
       try {
-        const requestBody = {
+        const requestBody: any = {
           model: this.config.model,
           messages,
           tools: [toolSchema],
           tool_choice: { type: "function", function: { name: toolSchema.function.name } },
-          temperature: 0.3,
         };
+
+        if (this.config.memoryTemperature !== false) {
+          requestBody.temperature = this.config.memoryTemperature ?? 0.3;
+        }
 
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -196,9 +199,21 @@ export class OpenAIChatCompletionProvider extends BaseAIProvider {
             error: errorText,
             iteration: iterations,
           });
+
+          let errorMessage = `API error: ${response.status} - ${errorText}`;
+
+          if (
+            response.status === 400 &&
+            errorText.includes("unsupported_value") &&
+            errorText.includes("temperature")
+          ) {
+            errorMessage =
+              'Your model does not support the temperature parameter. Add "memoryTemperature": false to your config file to disable it.';
+          }
+
           return {
             success: false,
-            error: `API error: ${response.status} - ${errorText}`,
+            error: errorMessage,
             iterations,
           };
         }

@@ -28,7 +28,7 @@ Add to your OpenCode configuration at `~/.config/opencode/opencode.json`:
 
 ```jsonc
 {
-  "plugins": ["opencode-mem"]
+  "plugins": ["opencode-mem"],
 }
 ```
 
@@ -37,10 +37,10 @@ The plugin downloads automatically on next startup. macOS users with Apple Silic
 ## Usage Examples
 
 ```typescript
-memory({ mode: "add", content: "Project uses microservices architecture" })
-memory({ mode: "search", query: "architecture decisions" })
-memory({ mode: "profile" })
-memory({ mode: "list", limit: 10 })
+memory({ mode: "add", content: "Project uses microservices architecture" });
+memory({ mode: "search", query: "architecture decisions" });
+memory({ mode: "profile" });
+memory({ mode: "list", limit: 10 });
 ```
 
 Access the web interface at `http://127.0.0.1:4747` for visual memory browsing and management.
@@ -57,24 +57,26 @@ Configure at `~/.config/opencode/opencode-mem.jsonc`:
   "embeddingModel": "Xenova/nomic-embed-text-v1",
   "webServerEnabled": true,
   "webServerPort": 4747,
-  
+
   "autoCaptureEnabled": true,
   "autoCaptureLanguage": "auto",
   "memoryProvider": "openai-chat",
   "memoryModel": "gpt-4o-mini",
   "memoryApiUrl": "https://api.openai.com/v1",
   "memoryApiKey": "sk-...",
-  
+  "memoryTemperature": 0.3,
+
   "showAutoCaptureToasts": true,
   "showUserProfileToasts": true,
   "showErrorToasts": true,
-  
+
   "userProfileAnalysisInterval": 10,
-  "maxMemories": 10
+  "maxMemories": 10,
 }
 ```
 
 **API Key Formats:**
+
 ```jsonc
 "memoryApiKey": "sk-..."
 "memoryApiKey": "file://~/.config/opencode/api-key.txt"
