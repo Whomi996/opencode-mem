@@ -6,25 +6,25 @@
 
 ![OpenCode Memory Banner](.github/banner.png)
 
-A persistent memory system for AI coding agents that enables long-term context retention across sessions using local vector database technology.
+用于 AI 编码代理的持久内存系统，可使用本地矢量数据库技术实现跨会话的长期上下文保留。
 
-## Visual Overview
+## 视觉概述
 
-**Project Memory Timeline:**
+**项目记忆时间轴：**
 
 ![Project Memory Timeline](.github/screenshot-project-memory.png)
 
-**User Profile Viewer:**
+**用户个人资料查看器：**
 
 ![User Profile Viewer](.github/screenshot-user-profile.png)
 
-## Core Features
+## 核心特性
 
-Local vector database with SQLite, persistent project memories, automatic user profile learning, unified memory-prompt timeline, full-featured web UI, intelligent prompt-based memory extraction, multi-provider AI support (OpenAI, Anthropic), 12+ local embedding models, smart deduplication, and built-in privacy protection.
+采用 SQLite 的本地矢量数据库、持久项目记忆、自动用户配置文件学习、统一记忆提示时间线、功能齐全的 Web UI、基于智能提示的内存提取、多提供商 AI 支持（OpenAI、Anthropic）、12+ 本地嵌入模型、智能重复数据删除和内置隐私保护。
 
-## Getting Started
+## 快速开始
 
-Add to your OpenCode configuration at `~/.config/opencode/opencode.json`:
+添加到 `~/.config/opencode/opencode.json` 处的 OpenCode 配置：
 
 ```jsonc
 {
@@ -32,9 +32,9 @@ Add to your OpenCode configuration at `~/.config/opencode/opencode.json`:
 }
 ```
 
-The plugin downloads automatically on next startup. macOS users with Apple Silicon must install Homebrew SQLite and configure the custom path - see our Wiki for details.
+该插件会在下次启动时自动下载。使用 Apple Silicon 的 macOS 用户必须安装 Homebrew SQLite 并配置自定义路径 - 有关详细信息，请参阅我们的 Wiki。
 
-## Usage Examples
+## 用法示例
 
 ```typescript
 memory({ mode: "add", content: "Project uses microservices architecture" });
@@ -43,11 +43,11 @@ memory({ mode: "profile" });
 memory({ mode: "list", limit: 10 });
 ```
 
-Access the web interface at `http://127.0.0.1:4747` for visual memory browsing and management.
+访问 `http://127.0.0.1:4747` 的 Web 界面进行视觉内存浏览和管理。
 
-## Configuration Essentials
+## 配置要点
 
-Configure at `~/.config/opencode/opencode-mem.jsonc`:
+在 `~/.config/opencode/opencode-mem.jsonc` 处配置：
 
 ```jsonc
 {
@@ -87,7 +87,7 @@ Configure at `~/.config/opencode/opencode-mem.jsonc`:
 }
 ```
 
-**API Key Formats:**
+**API 密钥格式：**
 
 ```jsonc
 "memoryApiKey": "sk-..."
@@ -95,18 +95,18 @@ Configure at `~/.config/opencode/opencode-mem.jsonc`:
 "memoryApiKey": "env://OPENAI_API_KEY"
 ```
 
-Full documentation available in our [Configuration Guide](https://github.com/tickernelz/opencode-mem/wiki/Configuration-Guide).
+完整文档请查看 [配置指南](https://github.com/tickernelz/opencode-mem/wiki/Configuration-Guide)。
 
-## Documentation
+## 文档
 
-- [Installation Guide](https://github.com/tickernelz/opencode-mem/wiki/Installation-Guide)
-- [API Reference](https://github.com/tickernelz/opencode-mem/wiki/API-Reference)
-- [Troubleshooting](https://github.com/tickernelz/opencode-mem/wiki/Troubleshooting)
-- [Complete Wiki](https://github.com/tickernelz/opencode-mem/wiki)
+- [安装指南](https://github.com/tickernelz/opencode-mem/wiki/Installation-Guide)
+- [API 参考](https://github.com/tickernelz/opencode-mem/wiki/API-Reference)
+- [故障排查](https://github.com/tickernelz/opencode-mem/wiki/Troubleshooting)
+- [完整 Wiki](https://github.com/tickernelz/opencode-mem/wiki)
 
-## Development & Contribution
+## 开发与贡献
 
-Build and test locally:
+本地构建和测试：
 
 ```bash
 bun install
@@ -115,15 +115,15 @@ bun run typecheck
 bun run format
 ```
 
-This project is actively seeking contributions to become the definitive memory plugin for AI coding agents. Whether you are fixing bugs, adding features, improving documentation, or expanding embedding model support, your contributions are critical. The codebase is well-structured and ready for enhancement. If you hit a blocker or have improvement ideas, submit a pull request - we review and merge contributions quickly.
+该项目欢迎贡献，目标是成为 AI 编码代理可靠的记忆插件。无论你是修复 bug、添加功能、改进文档，还是扩展嵌入模型支持，贡献都非常有价值。代码结构清晰，便于扩展；如果你遇到阻碍或有改进建议，欢迎提交 Pull Request，我们会尽快审查与合并。
 
-## License & Links
+## 许可证和链接
 
-MIT License - see LICENSE file
+MIT 许可证 - 详见 LICENSE 文件
 
-- **Repository**: https://github.com/tickernelz/opencode-mem
-- **Wiki**: https://github.com/tickernelz/opencode-mem/wiki
-- **Issues**: https://github.com/tickernelz/opencode-mem/issues
-- **OpenCode Platform**: https://opencode.ai
+- **存储库**：https://github.com/tickernelz/opencode-mem
+- **维基**：https://github.com/tickernelz/opencode-mem/wiki
+- **问题**：https://github.com/tickernelz/opencode-mem/issues
+- **开放代码平台**：https://opencode.ai
 
-Inspired by [opencode-supermemory](https://github.com/supermemoryai/opencode-supermemory)
+灵感来自 [opencode-supermemory](https://github.com/supermemoryai/opencode-supermemory)
